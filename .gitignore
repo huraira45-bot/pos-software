@@ -1,0 +1,11 @@
+# Abandoned early scaffold attempt, superseded by /backend - not part of the working app.
+/backend_failed_l11_scaffold/
+
+# Composer's local installer phar - not project source, redownload via getcomposer.org if needed.
+/composer.phar
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

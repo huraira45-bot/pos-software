@@ -1,0 +1,10 @@
+{
+  "port": 9100,
+  "printer": {
+    "_comment": "type: 'epson' or 'star'. interface: 'tcp://192.168.1.50' (network printer, recommended - no extra native dependency) or 'printer:PrinterName' (OS print spooler for a USB printer - requires `npm install printer`, which needs native build tools).",
+    "type": "epson",
+    "interface": "tcp://192.168.1.50",
+    "charactersPerLine": 42
+  },
+  "fbrLogoPath": "./assets/fbr-pos-logo.png"
+}

@@ -1,0 +1,17 @@
+{
+  "name": "pos-print-agent",
+  "version": "1.0.0",
+  "description": "Local ESC/POS print agent for the POS checkout PWA - renders and prints SRO 1006(I)/2021-compliant receipts (incl. FBR QR code and logo) on the till's 80mm thermal printer.",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.1",
+    "node-thermal-printer": "^4.4.3",
+    "qrcode": "^1.5.4"
+  }
+}
