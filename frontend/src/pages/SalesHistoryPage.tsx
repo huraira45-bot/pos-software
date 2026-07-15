@@ -102,10 +102,15 @@ export default function SalesHistoryPage() {
     setPdfLoadingId(invoiceId);
     try {
       const response = await apiClient.get(`/sales/${invoiceId}/receipt.pdf`, { responseType: 'blob' });
-      const blobUrl = URL.createObjectURL(response.data as Blob);
       if (pdfWindow) {
+        // Create the object URL in the popup's own realm, not the opener's -
+        // a blob URL registered here isn't reliably resolvable from a
+        // different window/tab (Chrome partitions blob storage per window),
+        // which is why the tab opened but rendered blank.
+        const blobUrl = (pdfWindow as Window & typeof globalThis).URL.createObjectURL(response.data as Blob);
         pdfWindow.location.href = blobUrl;
       } else {
+        const blobUrl = URL.createObjectURL(response.data as Blob);
         window.open(blobUrl, '_blank');
       }
     } finally {
