@@ -16,6 +16,19 @@ class ReportFilterRequest extends FormRequest
         return true;
     }
 
+    /**
+     * A bare 'to' date (e.g. "2026-07-15") must mean the end of that day, not
+     * midnight at its start - otherwise every report silently excludes sales
+     * made later that same day. Only append the time if none was given, so an
+     * already-full datetime input isn't clobbered.
+     */
+    protected function prepareForValidation(): void
+    {
+        if ($this->filled('to') && ! str_contains((string) $this->input('to'), ':')) {
+            $this->merge(['to' => $this->input('to') . ' 23:59:59']);
+        }
+    }
+
     public function rules(): array
     {
         return [

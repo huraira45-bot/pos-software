@@ -82,8 +82,8 @@ class CustomerController extends Controller
         $invoices = $customer->invoices()
             ->with('items')
             ->where('invoice_type', Invoice::TYPE_NEW)
-            ->when($request->date('from'), fn ($q, $v) => $q->where('sold_at', '>=', $v))
-            ->when($request->date('to'), fn ($q, $v) => $q->where('sold_at', '<=', $v))
+            ->when($request->date('from'), fn ($q, $v) => $q->where('sold_at', '>=', $v->startOfDay()))
+            ->when($request->date('to'), fn ($q, $v) => $q->where('sold_at', '<=', $v->endOfDay()))
             ->orderByDesc('sold_at')
             ->paginate($request->integer('per_page', 25));
 

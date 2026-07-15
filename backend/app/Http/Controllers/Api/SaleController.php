@@ -23,8 +23,8 @@ class SaleController extends Controller
             ->when($request->integer('branch_id'), fn ($q, $v) => $q->where('branch_id', $v))
             ->when($request->integer('terminal_id'), fn ($q, $v) => $q->where('terminal_id', $v))
             ->when($request->integer('customer_id'), fn ($q, $v) => $q->where('customer_id', $v))
-            ->when($request->date('from'), fn ($q, $v) => $q->where('sold_at', '>=', $v))
-            ->when($request->date('to'), fn ($q, $v) => $q->where('sold_at', '<=', $v))
+            ->when($request->date('from'), fn ($q, $v) => $q->where('sold_at', '>=', $v->startOfDay()))
+            ->when($request->date('to'), fn ($q, $v) => $q->where('sold_at', '<=', $v->endOfDay()))
             ->orderByDesc('sold_at')
             ->paginate($request->integer('per_page', 25));
 
