@@ -35,7 +35,6 @@ class RolesAndPermissionsSeeder extends Seeder
             PosPermissions::COMPLIANCE_DASHBOARD,
             PosPermissions::PRODUCT_MANAGE,
             PosPermissions::PURCHASE_MANAGE,
-            PosPermissions::FURTHER_TAX_OVERRIDE,
             PosPermissions::CUSTOMER_MANAGE,
         ]);
 

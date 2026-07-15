@@ -4,7 +4,6 @@ use App\Exceptions\Fiscal\InvoiceTotalsMismatchException;
 use App\Exceptions\Sales\BuyerInfoRequiredException;
 use App\Exceptions\Sales\InvalidCartException;
 use App\Exceptions\Sales\InvalidReturnException;
-use App\Exceptions\Sales\NonAtlConfirmationRequiredException;
 use App\Exceptions\Sales\PaymentMismatchException;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Application;
@@ -26,14 +25,6 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(function (InvalidCartException|PaymentMismatchException|BuyerInfoRequiredException|InvalidReturnException $e, Request $request) {
             if ($request->expectsJson()) {
                 return response()->json(['message' => $e->getMessage()], 422);
-            }
-        });
-
-        $exceptions->render(function (NonAtlConfirmationRequiredException $e, Request $request) {
-            if ($request->expectsJson()) {
-                // Distinct status + error_code so the frontend can show a
-                // confirmation dialog specifically, not a generic error toast.
-                return response()->json(['message' => $e->getMessage(), 'error_code' => 'non_atl_confirmation_required'], 409);
             }
         });
 

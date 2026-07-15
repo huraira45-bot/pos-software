@@ -13,19 +13,19 @@ class Customer extends Model
     public const TYPE_WALK_IN = 'walk_in';
     public const TYPE_B2B = 'b2b';
 
-    public const ATL_ACTIVE = 'active';
-    public const ATL_INACTIVE = 'inactive';
-    public const ATL_UNKNOWN = 'unknown';
-
     protected $fillable = [
-        'name', 'phone', 'ntn', 'cnic', 'address',
-        'customer_type', 'atl_status', 'atl_checked_at', 'is_active',
+        'name', 'company_name', 'contact_person', 'phone', 'email', 'ntn', 'cnic', 'strn',
+        'address', 'billing_address', 'shipping_address', 'customer_type',
+        'payment_terms_days', 'credit_limit', 'opening_balance',
+        'price_level', 'is_active',
     ];
 
     protected function casts(): array
     {
         return [
-            'atl_checked_at' => 'datetime',
+            'payment_terms_days' => 'integer',
+            'credit_limit' => 'decimal:2',
+            'opening_balance' => 'decimal:2',
             'is_active' => 'boolean',
         ];
     }
@@ -59,11 +59,6 @@ class Customer extends Model
     public function isB2b(): bool
     {
         return $this->customer_type === self::TYPE_B2B;
-    }
-
-    public function isAtlActive(): bool
-    {
-        return $this->atl_status === self::ATL_ACTIVE;
     }
 
     public function invoices(): HasMany

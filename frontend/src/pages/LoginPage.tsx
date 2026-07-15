@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import { useAuthStore } from '../stores/authStore';
+import { Button, Card, Input } from '../components/ui';
 import type { AuthSession } from '../types';
 
 export default function LoginPage() {
@@ -33,39 +34,24 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-full items-center justify-center px-4">
-      <form onSubmit={handleSubmit} className="w-full max-w-sm rounded-xl bg-slate-800 p-8 shadow-xl">
-        <h1 className="mb-1 text-2xl font-semibold text-white">POS Checkout</h1>
-        <p className="mb-6 text-sm text-slate-400">Sign in to start a shift on this terminal.</p>
+    <div className="flex min-h-full items-center justify-center bg-canvas px-4">
+      <Card className="w-full max-w-sm p-8">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <h1 className="mb-1 text-xl font-semibold text-primary-700">CHANGAN MULTAN MOTORS</h1>
+            <p className="text-sm text-ink-muted">Sign in to start a shift on this terminal.</p>
+          </div>
 
-        <label className="mb-1 block text-sm text-slate-300">Email</label>
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="mb-4 w-full rounded-md border border-slate-600 bg-slate-900 px-3 py-2 text-white outline-none focus:border-sky-500"
-          required
-        />
+          <Input label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <Input label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
 
-        <label className="mb-1 block text-sm text-slate-300">Password</label>
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="mb-4 w-full rounded-md border border-slate-600 bg-slate-900 px-3 py-2 text-white outline-none focus:border-sky-500"
-          required
-        />
+          {error && <p className="text-sm text-danger">{error}</p>}
 
-        {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full rounded-md bg-sky-600 py-2 font-medium text-white hover:bg-sky-500 disabled:opacity-50"
-        >
-          {loading ? 'Signing in…' : 'Sign in'}
-        </button>
-      </form>
+          <Button type="submit" variant="primary" loading={loading} className="w-full py-2">
+            {loading ? 'Signing in…' : 'Sign in'}
+          </Button>
+        </form>
+      </Card>
     </div>
   );
 }

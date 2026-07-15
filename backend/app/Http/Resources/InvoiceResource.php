@@ -12,6 +12,7 @@ class InvoiceResource extends JsonResource
         return [
             'id' => $this->id,
             'usin' => (string) $this->usin,
+            'usin_type' => $this->usin_type,
             'invoice_type' => $this->invoice_type,
             'ref_invoice_id' => $this->ref_invoice_id,
             'ref_usin' => $this->refUsinValue(),
@@ -21,8 +22,6 @@ class InvoiceResource extends JsonResource
             'branch_id' => $this->branch_id,
             'terminal_id' => $this->terminal_id,
             'customer_id' => $this->customer_id,
-            'non_atl_confirmed' => (bool) $this->non_atl_confirmed,
-            'further_tax_waived' => (bool) $this->further_tax_waived,
             'buyer' => [
                 'ntn' => $this->buyer_ntn,
                 'cnic' => $this->buyer_cnic,

@@ -22,6 +22,7 @@ class SaleController extends Controller
             ->where('invoice_type', Invoice::TYPE_NEW)
             ->when($request->integer('branch_id'), fn ($q, $v) => $q->where('branch_id', $v))
             ->when($request->integer('terminal_id'), fn ($q, $v) => $q->where('terminal_id', $v))
+            ->when($request->integer('customer_id'), fn ($q, $v) => $q->where('customer_id', $v))
             ->when($request->date('from'), fn ($q, $v) => $q->where('sold_at', '>=', $v))
             ->when($request->date('to'), fn ($q, $v) => $q->where('sold_at', '<=', $v))
             ->orderByDesc('sold_at')

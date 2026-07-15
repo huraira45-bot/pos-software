@@ -8,7 +8,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[ObservedBy(TerminalObserver::class)]
 class Terminal extends Model
@@ -35,9 +34,9 @@ class Terminal extends Model
         return $this->belongsTo(Branch::class);
     }
 
-    public function usinCounter(): HasOne
+    public function usinCounters(): HasMany
     {
-        return $this->hasOne(UsinCounter::class);
+        return $this->hasMany(UsinCounter::class);
     }
 
     public function invoices(): HasMany

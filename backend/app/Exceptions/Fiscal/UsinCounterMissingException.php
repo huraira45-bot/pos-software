@@ -11,8 +11,9 @@ use RuntimeException;
  */
 class UsinCounterMissingException extends RuntimeException
 {
-    public function __construct(int $terminalId)
+    public function __construct(int $terminalId, string $usinType = '')
     {
-        parent::__construct("No usin_counters row for terminal_id={$terminalId}. Terminal was not provisioned correctly.");
+        $suffix = $usinType !== '' ? ", usin_type={$usinType}" : '';
+        parent::__construct("No usin_counters row for terminal_id={$terminalId}{$suffix}. Terminal was not provisioned correctly.");
     }
 }

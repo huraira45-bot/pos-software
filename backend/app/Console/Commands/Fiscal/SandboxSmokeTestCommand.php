@@ -70,6 +70,7 @@ class SandboxSmokeTestCommand extends Command
             $invoice = $checkout->checkout([
                 'branch_id' => $terminal->branch_id,
                 'terminal_id' => $terminal->id,
+                'usin_type' => 'SIR',
                 'items' => [['product_id' => $product->id, 'quantity' => 1]],
                 'tenders' => [['mode' => Invoice::PAYMENT_CASH, 'amount' => '236.00']],
             ], $actor);
@@ -82,6 +83,7 @@ class SandboxSmokeTestCommand extends Command
             $multiItemInvoice = $checkout->checkout([
                 'branch_id' => $terminal->branch_id,
                 'terminal_id' => $terminal->id,
+                'usin_type' => 'SIR',
                 'items' => [
                     ['product_id' => $product->id, 'quantity' => 2],
                     ['product_id' => $product->id, 'quantity' => 3],
@@ -96,6 +98,7 @@ class SandboxSmokeTestCommand extends Command
             $invoice = $checkout->checkout([
                 'branch_id' => $terminal->branch_id,
                 'terminal_id' => $terminal->id,
+                'usin_type' => 'SIR',
                 'items' => [['product_id' => $product->id, 'quantity' => 2]],
                 'bill_discount' => '20.00',
                 'tenders' => [['mode' => Invoice::PAYMENT_CASH, 'amount' => '448.40']],
@@ -108,6 +111,7 @@ class SandboxSmokeTestCommand extends Command
             $invoice = $checkout->checkout([
                 'branch_id' => $terminal->branch_id,
                 'terminal_id' => $terminal->id,
+                'usin_type' => 'SIR',
                 'items' => [['product_id' => $product->id, 'quantity' => 1]],
                 'tenders' => [
                     ['mode' => Invoice::PAYMENT_CASH, 'amount' => '136.00'],
@@ -122,6 +126,7 @@ class SandboxSmokeTestCommand extends Command
             $invoice = $checkout->checkout([
                 'branch_id' => $terminal->branch_id,
                 'terminal_id' => $terminal->id,
+                'usin_type' => 'SIR',
                 'items' => [['product_id' => $product->id, 'quantity' => 500]],
                 'tenders' => [['mode' => Invoice::PAYMENT_CASH, 'amount' => '118000.00']],
                 'buyer' => ['ntn' => '1234567-8', 'name' => 'Smoke Test Buyer (Pvt) Ltd'],

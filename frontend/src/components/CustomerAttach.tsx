@@ -1,13 +1,8 @@
 import { useState, type FormEvent } from 'react';
 import { apiClient } from '../api/client';
 import { useCartStore } from '../stores/cartStore';
+import { Badge, Input, Select } from './ui';
 import type { Customer } from '../types';
-
-const ATL_BADGE: Record<Customer['atl_status'], { label: string; className: string }> = {
-  active: { label: 'ATL Active', className: 'bg-emerald-900 text-emerald-300' },
-  inactive: { label: 'Not ATL Active', className: 'bg-red-900 text-red-300' },
-  unknown: { label: 'ATL Unknown', className: 'bg-slate-700 text-slate-300' },
-};
 
 /**
  * Walk-in stays the zero-click default: this whole component collapses to a
@@ -65,16 +60,15 @@ export default function CustomerAttach() {
   }
 
   if (customer) {
-    const badge = ATL_BADGE[customer.atl_status];
     return (
-      <div className="flex items-center justify-between rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm">
+      <div className="flex items-center justify-between rounded-md border border-border-strong bg-canvas px-3 py-2 text-sm">
         <div>
-          <span className="text-white">{customer.name}</span>
+          <span className="text-ink">{customer.name}</span>
           {customer.customer_type === 'b2b' && (
-            <span className={`ml-2 rounded px-1.5 py-0.5 text-xs ${badge.className}`}>{badge.label}</span>
+            <Badge variant="primary" className="ml-2">B2B</Badge>
           )}
         </div>
-        <button onClick={() => setCustomer(null)} className="text-xs text-slate-400 hover:text-white">
+        <button onClick={() => setCustomer(null)} className="text-xs text-ink-faint hover:text-ink">
           Remove
         </button>
       </div>
@@ -83,95 +77,75 @@ export default function CustomerAttach() {
 
   if (!open) {
     return (
-      <button onClick={() => setOpen(true)} className="text-sm text-sky-400 hover:text-sky-300">
+      <button onClick={() => setOpen(true)} className="text-sm font-medium text-primary-600 hover:text-primary-700">
         + Attach customer
       </button>
     );
   }
 
   return (
-    <div className="rounded-md border border-slate-700 bg-slate-900 p-3">
+    <div className="rounded-md border border-border-strong bg-canvas p-3">
       <div className="mb-2 flex gap-3 text-xs">
         <button
           onClick={() => setMode('search')}
-          className={mode === 'search' ? 'text-sky-400' : 'text-slate-500'}
+          className={mode === 'search' ? 'font-medium text-primary-600' : 'text-ink-faint'}
         >
           Search
         </button>
         <button
           onClick={() => setMode('create')}
-          className={mode === 'create' ? 'text-sky-400' : 'text-slate-500'}
+          className={mode === 'create' ? 'font-medium text-primary-600' : 'text-ink-faint'}
         >
           Quick create
         </button>
-        <button onClick={() => setOpen(false)} className="ml-auto text-slate-500 hover:text-white">
+        <button onClick={() => setOpen(false)} className="ml-auto text-ink-faint hover:text-ink">
           Cancel
         </button>
       </div>
 
       {mode === 'search' ? (
         <div>
-          <input
-            value={query}
-            onChange={(e) => handleSearch(e.target.value)}
-            placeholder="Search by phone, NTN, or name…"
-            className="w-full rounded border border-slate-700 bg-slate-800 px-2 py-1.5 text-sm text-white"
-            autoFocus
-          />
+          <Input value={query} onChange={(e) => handleSearch(e.target.value)} placeholder="Search by phone, NTN, or name…" autoFocus />
           <ul className="mt-2 max-h-40 overflow-y-auto">
             {results.map((c) => (
               <li key={c.id}>
                 <button
                   onClick={() => selectCustomer(c)}
-                  className="w-full rounded px-2 py-1.5 text-left text-sm text-slate-200 hover:bg-slate-800"
+                  className="w-full rounded px-2 py-1.5 text-left text-sm text-ink hover:bg-surface-hover"
                 >
-                  {c.name} {c.phone && <span className="text-slate-500">· {c.phone}</span>}
+                  {c.name} {c.phone && <span className="text-ink-faint">· {c.phone}</span>}
                 </button>
               </li>
             ))}
             {query && results.length === 0 && (
-              <li className="px-2 py-1.5 text-sm text-slate-500">No matches - try "Quick create".</li>
+              <li className="px-2 py-1.5 text-sm text-ink-faint">No matches - try "Quick create".</li>
             )}
           </ul>
         </div>
       ) : (
         <form onSubmit={handleCreate} className="space-y-2">
-          <input
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            placeholder="Name"
-            required
-            className="w-full rounded border border-slate-700 bg-slate-800 px-2 py-1.5 text-sm text-white"
-          />
-          <input
-            value={form.phone}
-            onChange={(e) => setForm({ ...form, phone: e.target.value })}
-            placeholder="Phone"
-            className="w-full rounded border border-slate-700 bg-slate-800 px-2 py-1.5 text-sm text-white"
-          />
+          <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Name" required />
+          <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="Phone" />
           <div className="flex gap-2">
-            <select
+            <Select
               value={form.customer_type}
               onChange={(e) => setForm({ ...form, customer_type: e.target.value as 'walk_in' | 'b2b' })}
-              className="rounded border border-slate-700 bg-slate-800 px-2 py-1.5 text-sm text-white"
+              className="w-auto"
             >
               <option value="walk_in">Walk-in</option>
               <option value="b2b">B2B</option>
-            </select>
+            </Select>
             {form.customer_type === 'b2b' && (
-              <input
-                value={form.ntn}
-                onChange={(e) => setForm({ ...form, ntn: e.target.value })}
-                placeholder="NTN (7 digits)"
-                className="flex-1 rounded border border-slate-700 bg-slate-800 px-2 py-1.5 text-sm text-white"
-              />
+              <div className="flex-1">
+                <Input value={form.ntn} onChange={(e) => setForm({ ...form, ntn: e.target.value })} placeholder="NTN (7 digits)" />
+              </div>
             )}
           </div>
-          {error && <p className="text-xs text-red-400">{error}</p>}
+          {error && <p className="text-xs text-danger">{error}</p>}
           <button
             type="submit"
             disabled={creating}
-            className="w-full rounded bg-sky-600 py-1.5 text-sm font-medium text-white hover:bg-sky-500 disabled:opacity-50"
+            className="w-full rounded-md bg-primary-600 py-1.5 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
           >
             {creating ? 'Creating…' : 'Create & attach'}
           </button>

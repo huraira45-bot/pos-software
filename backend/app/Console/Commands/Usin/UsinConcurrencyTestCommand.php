@@ -13,13 +13,14 @@ use Illuminate\Console\Command;
  */
 class UsinConcurrencyTestCommand extends Command
 {
-    protected $signature = 'usin:concurrency-test {terminal : Terminal ID} {--n=25 : Number of concurrent allocations} {--delay-ms=20 : Artificial hold time inside each transaction}';
+    protected $signature = 'usin:concurrency-test {terminal : Terminal ID} {--type=SIR : USIN type - SIR or SS} {--n=25 : Number of concurrent allocations} {--delay-ms=20 : Artificial hold time inside each transaction}';
 
     protected $description = 'Fire N concurrent USIN allocations at one terminal and verify the sequence is gapless and unique';
 
     public function handle(): int
     {
         $terminalId = (int) $this->argument('terminal');
+        $usinType = (string) $this->option('type');
         $n = (int) $this->option('n');
         $delayMs = (int) $this->option('delay-ms');
 
@@ -28,7 +29,7 @@ class UsinConcurrencyTestCommand extends Command
 
         $processes = [];
         for ($i = 0; $i < $n; $i++) {
-            $cmd = [$phpBinary, $artisan, 'usin:allocate', (string) $terminalId, "--delay-ms={$delayMs}"];
+            $cmd = [$phpBinary, $artisan, 'usin:allocate', (string) $terminalId, "--type={$usinType}", "--delay-ms={$delayMs}"];
             $descriptorSpec = [
                 0 => ['pipe', 'r'],
                 1 => ['pipe', 'w'],
@@ -56,7 +57,9 @@ class UsinConcurrencyTestCommand extends Command
                 $errors[] = trim($err) ?: "exit code {$exitCode}";
                 continue;
             }
-            $results[] = (int) trim($out);
+            $rawUsin = trim($out);
+            preg_match('/(\d+)$/', $rawUsin, $matches);
+            $results[] = isset($matches[1]) ? (int) $matches[1] : 0;
         }
 
         if (! empty($errors)) {
@@ -71,7 +74,7 @@ class UsinConcurrencyTestCommand extends Command
         $expected = range(1, $n);
         $isGaplessAndUnique = $results === $expected;
 
-        $this->info('Allocated USINs: ' . implode(',', $results));
+        $this->info("Allocated {$usinType} USIN numbers: " . implode(',', $results));
 
         if (! $isGaplessAndUnique) {
             $duplicates = array_diff_assoc($results, array_unique($results));

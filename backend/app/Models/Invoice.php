@@ -30,10 +30,9 @@ class Invoice extends Model
     public const BUYER_CAPTURE_THRESHOLD = 100000;
 
     protected $fillable = [
-        'branch_id', 'terminal_id', 'customer_id', 'usin', 'invoice_type', 'ref_invoice_id',
+        'branch_id', 'terminal_id', 'customer_id', 'usin', 'usin_type', 'invoice_type', 'ref_invoice_id',
         'fbr_invoice_number', 'buyer_ntn', 'buyer_cnic', 'buyer_name', 'buyer_phone',
         'total_sale_value', 'total_tax_charged', 'discount', 'further_tax', 'total_bill_amount',
-        'non_atl_confirmed', 'further_tax_waived',
         'payment_mode', 'payment_breakdown', 'fiscal_status', 'printed_offline_pending',
         'synced_at', 'sold_at', 'cashier_id',
     ];
@@ -48,8 +47,6 @@ class Invoice extends Model
             'total_bill_amount' => 'decimal:2',
             'payment_breakdown' => 'array',
             'printed_offline_pending' => 'boolean',
-            'non_atl_confirmed' => 'boolean',
-            'further_tax_waived' => 'boolean',
             'synced_at' => 'datetime',
             'sold_at' => 'datetime',
         ];

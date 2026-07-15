@@ -78,23 +78,23 @@ export default function ProductSearch({ onSelect }: Props) {
         value={query}
         onChange={(e) => handleChange(e.target.value)}
         placeholder="Scan barcode or search item…"
-        className="w-full rounded-md border border-slate-600 bg-slate-900 px-3 py-2 text-white outline-none focus:border-sky-500"
+        className="w-full rounded-md border border-border-strong bg-surface px-3 py-2 text-ink outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
       />
-      <p className="mt-1 text-xs text-slate-500">
+      <p className="mt-1 text-xs text-ink-faint">
         {refreshedAt ? `Catalog synced ${refreshedAt}` : 'Using cached catalog (offline)'}
       </p>
 
       {results.length > 0 && (
-        <ul className="absolute z-10 mt-1 w-full rounded-md border border-slate-700 bg-slate-800 shadow-lg">
+        <ul className="absolute z-10 mt-1 w-full rounded-md border border-border bg-surface shadow-card">
           {results.map((p) => (
             <li key={p.id}>
               <button
                 type="button"
                 onClick={() => handleSelect(p)}
-                className="flex w-full justify-between px-3 py-2 text-left text-sm text-white hover:bg-slate-700"
+                className="flex w-full justify-between px-3 py-2 text-left text-sm text-ink hover:bg-surface-hover"
               >
                 <span>{p.name}</span>
-                <span className="text-slate-400">Rs.{p.price_excl_tax}</span>
+                <span className="text-ink-faint">Rs.{p.price_excl_tax}</span>
               </button>
             </li>
           ))}

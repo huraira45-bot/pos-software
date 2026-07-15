@@ -27,11 +27,21 @@ class StoreCustomerRequest extends FormRequest
 
         return [
             'name' => ['required', 'string', 'max:255'],
+            'company_name' => ['nullable', 'string', 'max:255'],
+            'contact_person' => ['nullable', 'string', 'max:255'],
             'phone' => ['nullable', 'string', 'max:30'],
+            'email' => ['nullable', 'email', 'max:255'],
             'ntn' => ['nullable', 'digits:7', Rule::unique('customers', 'ntn')->ignore($customerId)],
             'cnic' => ['nullable', 'digits:13', Rule::unique('customers', 'cnic')->ignore($customerId)],
+            'strn' => ['nullable', 'string', 'max:50'],
             'address' => ['nullable', 'string'],
+            'billing_address' => ['nullable', 'string'],
+            'shipping_address' => ['nullable', 'string'],
             'customer_type' => ['required', Rule::in(['walk_in', 'b2b'])],
+            'payment_terms_days' => ['nullable', 'integer', 'min:0', 'max:365'],
+            'credit_limit' => ['nullable', 'numeric', 'gte:0'],
+            'opening_balance' => ['nullable', 'numeric', 'gte:0'],
+            'price_level' => ['nullable', Rule::in(['retail', 'wholesale', 'custom'])],
         ];
     }
 

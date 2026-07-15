@@ -156,12 +156,18 @@ class ReturnService
             $original, $terminal, $creditLines, $totalSaleValue, $totalTaxCharged,
             $totalDiscount, $totalFurtherTax, $totalAmount, $tenders, $paymentMode, $actor,
         ) {
-            $usin = $this->usinGenerator->next($terminal->id);
+            // A credit note inherits its original sale's USIN type (SIR/SS) rather
+            // than letting the cashier pick again - it's a correction of that same
+            // sale, not a new transaction of a potentially different type. Legacy
+            // invoices that predate the type column fall back to SIR.
+            $usinType = $original->usin_type ?? 'SIR';
+            $usin = $this->usinGenerator->next($terminal->id, $usinType);
 
             $credit = Invoice::create([
                 'branch_id' => $original->branch_id,
                 'terminal_id' => $terminal->id,
                 'usin' => $usin,
+                'usin_type' => $usinType,
                 'invoice_type' => Invoice::TYPE_CREDIT,
                 'ref_invoice_id' => $original->id,
                 'buyer_ntn' => $original->buyer_ntn,

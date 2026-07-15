@@ -30,6 +30,7 @@ class CheckoutMockFiscalizerTest extends TestCase
         $invoice = app(CheckoutService::class)->checkout([
             'branch_id' => $branch->id,
             'terminal_id' => $terminal->id,
+            'usin_type' => 'SIR',
             'items' => [
                 ['product_id' => $product->id, 'quantity' => 2],
             ],
@@ -38,7 +39,7 @@ class CheckoutMockFiscalizerTest extends TestCase
             ],
         ], $cashier);
 
-        $this->assertSame(1, $invoice->usin);
+        $this->assertSame('SIR-1', $invoice->usin);
         $this->assertSame('2000.00', (string) $invoice->total_sale_value);
         $this->assertSame('360.00', (string) $invoice->total_tax_charged);
         $this->assertSame('2360.00', (string) $invoice->total_bill_amount);
@@ -62,6 +63,7 @@ class CheckoutMockFiscalizerTest extends TestCase
         $invoice = app(CheckoutService::class)->checkout([
             'branch_id' => $branch->id,
             'terminal_id' => $terminal->id,
+            'usin_type' => 'SIR',
             'items' => [['product_id' => $product->id, 'quantity' => 1]],
             'tenders' => [
                 ['mode' => Invoice::PAYMENT_CASH, 'amount' => '60.00'],
@@ -84,6 +86,7 @@ class CheckoutMockFiscalizerTest extends TestCase
         app(CheckoutService::class)->checkout([
             'branch_id' => $branch->id,
             'terminal_id' => $terminal->id,
+            'usin_type' => 'SIR',
             'items' => [['product_id' => $product->id, 'quantity' => 3]],
             'tenders' => [['mode' => Invoice::PAYMENT_CASH, 'amount' => '354.00']],
         ], $cashier);

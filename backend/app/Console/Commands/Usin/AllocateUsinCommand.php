@@ -15,18 +15,19 @@ use Illuminate\Support\Facades\Log;
  */
 class AllocateUsinCommand extends Command
 {
-    protected $signature = 'usin:allocate {terminal : Terminal ID} {--delay-ms=0 : Sleep inside the transaction before commit, to widen the lock window}';
+    protected $signature = 'usin:allocate {terminal : Terminal ID} {--type=SIR : USIN type - SIR or SS} {--delay-ms=0 : Sleep inside the transaction before commit, to widen the lock window}';
 
     protected $description = 'Allocate one USIN for the given terminal inside a DB transaction and print it';
 
     public function handle(UsinGenerator $generator): int
     {
         $terminalId = (int) $this->argument('terminal');
+        $usinType = (string) $this->option('type');
         $delayMs = (int) $this->option('delay-ms');
 
         try {
-            $usin = DB::transaction(function () use ($generator, $terminalId, $delayMs) {
-                $value = $generator->next($terminalId);
+            $usin = DB::transaction(function () use ($generator, $terminalId, $usinType, $delayMs) {
+                $value = $generator->next($terminalId, $usinType);
                 if ($delayMs > 0) {
                     usleep($delayMs * 1000);
                 }

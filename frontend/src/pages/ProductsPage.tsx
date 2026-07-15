@@ -1,7 +1,20 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import { useAuthStore } from '../stores/authStore';
+import {
+  Button,
+  Card,
+  EmptyState,
+  Input,
+  LoadingState,
+  PageHeader,
+  Table,
+  THead,
+  TH,
+  TBody,
+  TR,
+  TD,
+} from '../components/ui';
 import type { Product } from '../types';
 
 interface ProductForm {
@@ -100,102 +113,81 @@ export default function ProductsPage() {
   }
 
   return (
-    <div className="min-h-full p-6">
-      <header className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-semibold text-white">Products</h1>
-          <p className="text-xs text-slate-400">Catalog management</p>
-        </div>
-        <Link to="/checkout" className="text-sm text-sky-400 hover:text-sky-300">
-          &larr; Back to checkout
-        </Link>
-      </header>
+    <div>
+      <PageHeader title="Products" subtitle="Catalog management" />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <section className="rounded-lg bg-slate-800 p-4 lg:col-span-2">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+        <Card className="p-4 lg:col-span-2">
           {loading ? (
-            <p className="text-slate-500">Loading…</p>
+            <LoadingState />
           ) : (
-            <table className="w-full text-sm text-slate-200">
-              <thead>
-                <tr className="border-b border-slate-700 text-left text-slate-400">
-                  <th className="py-2">Code</th>
-                  <th className="py-2">Name</th>
-                  <th className="py-2">PCT Code</th>
-                  <th className="py-2 text-right">Tax%</th>
-                  <th className="py-2 text-right">Price</th>
-                  <th className="py-2"></th>
-                </tr>
-              </thead>
-              <tbody>
+            <Table>
+              <THead>
+                <TH>Code</TH>
+                <TH>Name</TH>
+                <TH>PCT Code</TH>
+                <TH align="right">Tax%</TH>
+                <TH align="right">Price</TH>
+                <TH></TH>
+              </THead>
+              <TBody>
                 {products.map((p) => (
-                  <tr key={p.id} className="border-b border-slate-800">
-                    <td className="py-2">{p.item_code}</td>
-                    <td className="py-2">{p.name}</td>
-                    <td className="py-2">{p.pct_code}</td>
-                    <td className="py-2 text-right">{p.tax_rate}%</td>
-                    <td className="py-2 text-right">Rs.{p.price_excl_tax}</td>
-                    <td className="py-2 text-right">
+                  <TR key={p.id}>
+                    <TD>{p.item_code}</TD>
+                    <TD>{p.name}</TD>
+                    <TD>{p.pct_code}</TD>
+                    <TD align="right">{p.tax_rate}%</TD>
+                    <TD align="right">Rs.{p.price_excl_tax}</TD>
+                    <TD align="right">
                       {canManage && (
-                        <button
-                          onClick={() => startEdit(p)}
-                          className="text-xs text-sky-400 hover:text-sky-300"
-                        >
+                        <button onClick={() => startEdit(p)} className="text-xs font-medium text-primary-600 hover:text-primary-700">
                           Edit
                         </button>
                       )}
-                    </td>
-                  </tr>
+                    </TD>
+                  </TR>
                 ))}
-                {products.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="py-4 text-center text-slate-500">
-                      No products yet.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+              </TBody>
+            </Table>
           )}
-        </section>
+          {!loading && products.length === 0 && <EmptyState title="No products yet." />}
+        </Card>
 
-        <aside className="rounded-lg bg-slate-800 p-4">
+        <Card className="p-4">
           {!canManage ? (
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-ink-muted">
               Your role doesn't include product management. Ask an admin or manager to add or edit items.
             </p>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-3">
-              <h2 className="text-sm font-medium text-slate-300">
-                {form.id ? `Edit: ${form.item_code}` : 'Add product'}
-              </h2>
+              <h2 className="text-sm font-medium text-ink">{form.id ? `Edit: ${form.item_code}` : 'Add product'}</h2>
 
-              <Field label="Item code" value={form.item_code} onChange={(v) => setForm({ ...form, item_code: v })} required />
-              <Field label="Name" value={form.name} onChange={(v) => setForm({ ...form, name: v })} required />
-              <Field label="Barcode (optional)" value={form.barcode} onChange={(v) => setForm({ ...form, barcode: v })} />
-              <Field label="Unit" value={form.unit} onChange={(v) => setForm({ ...form, unit: v })} required />
-              <Field
+              <Input label="Item code" value={form.item_code} onChange={(e) => setForm({ ...form, item_code: e.target.value })} required />
+              <Input label="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+              <Input label="Barcode (optional)" value={form.barcode} onChange={(e) => setForm({ ...form, barcode: e.target.value })} />
+              <Input label="Unit" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} required />
+              <Input
                 label="PCT Code (Pakistan Customs Tariff)"
                 value={form.pct_code}
-                onChange={(v) => setForm({ ...form, pct_code: v })}
+                onChange={(e) => setForm({ ...form, pct_code: e.target.value })}
                 required
               />
-              <Field
+              <Input
                 label="Tax rate (%)"
                 type="number"
                 value={form.tax_rate}
-                onChange={(v) => setForm({ ...form, tax_rate: v })}
+                onChange={(e) => setForm({ ...form, tax_rate: e.target.value })}
                 required
               />
-              <Field
+              <Input
                 label="Price (excl. tax)"
                 type="number"
                 value={form.price_excl_tax}
-                onChange={(v) => setForm({ ...form, price_excl_tax: v })}
+                onChange={(e) => setForm({ ...form, price_excl_tax: e.target.value })}
                 required
               />
 
-              <label className="flex items-center gap-2 text-sm text-slate-300">
+              <label className="flex items-center gap-2 text-sm text-ink-muted">
                 <input
                   type="checkbox"
                   checked={form.track_stock}
@@ -204,58 +196,22 @@ export default function ProductsPage() {
                 Track stock
               </label>
 
-              {error && <p className="text-sm text-red-400">{error}</p>}
+              {error && <p className="text-sm text-danger">{error}</p>}
 
               <div className="flex gap-2">
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="flex-1 rounded-md bg-emerald-600 py-2 font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
-                >
+                <Button type="submit" variant="primary" loading={saving} className="flex-1 py-2">
                   {saving ? 'Saving…' : form.id ? 'Save changes' : 'Add product'}
-                </button>
+                </Button>
                 {form.id && (
-                  <button
-                    type="button"
-                    onClick={() => setForm(emptyForm)}
-                    className="rounded-md border border-slate-600 px-3 text-sm text-slate-300 hover:bg-slate-700"
-                  >
+                  <Button type="button" variant="secondary" onClick={() => setForm(emptyForm)}>
                     Cancel
-                  </button>
+                  </Button>
                 )}
               </div>
             </form>
           )}
-        </aside>
+        </Card>
       </div>
-    </div>
-  );
-}
-
-function Field({
-  label,
-  value,
-  onChange,
-  type = 'text',
-  required = false,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  type?: string;
-  required?: boolean;
-}) {
-  return (
-    <div>
-      <label className="mb-1 block text-xs text-slate-400">{label}</label>
-      <input
-        type={type}
-        step={type === 'number' ? '0.01' : undefined}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        required={required}
-        className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm text-white outline-none focus:border-sky-500"
-      />
     </div>
   );
 }

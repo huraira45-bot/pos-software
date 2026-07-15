@@ -15,10 +15,10 @@ class ProductController extends Controller
         $products = Product::query()
             ->with('variants')
             ->when($request->filled('search'), function ($q) use ($request) {
-                $term = '%' . $request->string('search') . '%';
-                $q->where(fn ($q2) => $q2->where('name', 'ilike', $term)
-                    ->orWhere('item_code', 'ilike', $term)
-                    ->orWhere('barcode', 'ilike', $term));
+                $term = '%' . mb_strtolower($request->string('search')) . '%';
+                $q->where(fn ($q2) => $q2->whereRaw('LOWER(name) LIKE ?', [$term])
+                    ->orWhereRaw('LOWER(item_code) LIKE ?', [$term])
+                    ->orWhereRaw('LOWER(barcode) LIKE ?', [$term]));
             })
             ->when($request->boolean('active_only', true), fn ($q) => $q->where('is_active', true))
             ->orderBy('name')

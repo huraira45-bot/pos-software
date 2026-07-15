@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Services\Fiscal\UsinGenerator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -17,6 +18,7 @@ class StoreSaleRequest extends FormRequest
         return [
             'branch_id' => ['required', 'integer', 'exists:branches,id'],
             'terminal_id' => ['required', 'integer', 'exists:terminals,id'],
+            'usin_type' => ['required', Rule::in(array_keys(UsinGenerator::SEPARATORS))],
 
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['required', 'integer', 'exists:products,id'],
@@ -38,8 +40,6 @@ class StoreSaleRequest extends FormRequest
             'buyer.phone' => ['nullable', 'string', 'max:20'],
 
             'customer_id' => ['nullable', 'integer', 'exists:customers,id'],
-            'confirm_non_atl_b2b' => ['nullable', 'boolean'],
-            'waive_further_tax' => ['nullable', 'boolean'],
         ];
     }
 }

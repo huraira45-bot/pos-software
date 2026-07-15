@@ -37,6 +37,7 @@ class ComplianceSyncHealthTest extends TestCase
         $invoice = app(CheckoutService::class)->checkout([
             'branch_id' => $branch->id,
             'terminal_id' => $terminal->id,
+            'usin_type' => 'SIR',
             'items' => [['product_id' => $product->id, 'quantity' => 1]],
             'tenders' => [['mode' => Invoice::PAYMENT_CASH, 'amount' => '100.00']],
         ], $cashier);
@@ -65,6 +66,7 @@ class ComplianceSyncHealthTest extends TestCase
         $invoice = app(CheckoutService::class)->checkout([
             'branch_id' => $branch->id,
             'terminal_id' => $terminal->id,
+            'usin_type' => 'SIR',
             'items' => [['product_id' => $product->id, 'quantity' => 1]],
             'tenders' => [['mode' => Invoice::PAYMENT_CASH, 'amount' => '100.00']],
         ], $cashier);

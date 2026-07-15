@@ -49,6 +49,6 @@ class UsinConcurrencyTest extends TestCase
         // usin:concurrency-test propagates, so exit code 0 already implies
         // every one of the 20 child allocations succeeded distinctly.
         $this->assertSame(0, $exitCode);
-        $this->assertSame(20, UsinCounter::where('terminal_id', $this->terminal->id)->value('last_value'));
+        $this->assertSame(20, UsinCounter::where('terminal_id', $this->terminal->id)->where('usin_type', 'SIR')->value('last_value'));
     }
 }

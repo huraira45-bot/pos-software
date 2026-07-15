@@ -8,8 +8,17 @@ return [
     |--------------------------------------------------------------------------
     |
     | Which IFiscalizer adapter is used when a terminal does not specify its
-    | own override. One of: fbr_cloud, fbr_sandbox, local_sdc, mock.
-    | NEVER default to fbr_cloud in non-production environments.
+    | own override. One of: fbr_cloud, fbr_sandbox, pra_cloud, pra_sandbox,
+    | local_sdc, mock. NEVER default to fbr_cloud/pra_cloud in non-production
+    | environments.
+    |
+    | pra_cloud/pra_sandbox are the Punjab Revenue Authority equivalent of the
+    | fbr_* modes - same PRAL-built PostData contract and response shape
+    | ({InvoiceNumber, Code, Response, Errors}), same FbrPostDataFiscalizer
+    | class, just a different registered POS ID/token against PRA's backend
+    | instead of FBR's. The sandbox endpoint below is shared PRAL sandbox
+    | infrastructure (same host/path FBR's sandbox uses) - which authority a
+    | POS ID resolves to is determined by PRAL's own registration, not by us.
     |
     */
     'mode' => env('FISCAL_MODE', 'mock'),
@@ -17,6 +26,8 @@ return [
     'endpoints' => [
         'fbr_cloud' => env('FISCAL_FBR_PRODUCTION_URL', 'https://esp.fbr.gov.pk:8244/FBR/v1/api/Live/PostData'),
         'fbr_sandbox' => env('FISCAL_FBR_SANDBOX_URL', 'https://ims.pral.com.pk/ims/sandbox/api/Live/PostData'),
+        'pra_cloud' => env('FISCAL_PRA_PRODUCTION_URL', 'https://ims.pral.com.pk/ims/production/api/Live/PostData'),
+        'pra_sandbox' => env('FISCAL_PRA_SANDBOX_URL', 'https://ims.pral.com.pk/ims/sandbox/api/Live/PostData'),
         'local_sdc' => env('FISCAL_LOCAL_SDC_URL', 'http://localhost:8524/api/IMSFiscal/GetInvoiceNumberByModel'),
     ],
 

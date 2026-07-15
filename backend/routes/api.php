@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\Api\AtlImportController;
 use App\Http\Controllers\Api\AuditLogController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BranchController;
@@ -8,6 +7,7 @@ use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\ComplianceController;
 use App\Http\Controllers\Api\ConfigController;
 use App\Http\Controllers\Api\CustomerController;
+use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\HeldCartController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\PurchaseController;
@@ -18,7 +18,9 @@ use App\Http\Controllers\Api\SaleController;
 use App\Http\Controllers\Api\StockController;
 use App\Http\Controllers\Api\SupplierController;
 use App\Http\Controllers\Api\TerminalController;
+use App\Http\Controllers\Api\UsinCounterController;
 use App\Http\Controllers\Api\UserController;
+use App\Support\PosPermissions;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/login', [AuthController::class, 'login']);
@@ -63,15 +65,26 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/stock-levels/low-stock', [StockController::class, 'lowStock']);
     Route::post('/stock-adjustments', [StockController::class, 'adjust']);
 
-    Route::get('/reports/day-close', [ReportController::class, 'dayClose']);
-    Route::get('/reports/sales-by-item', [ReportController::class, 'salesByItem']);
-    Route::get('/reports/sales-by-category', [ReportController::class, 'salesByCategory']);
-    Route::get('/reports/sales-by-cashier', [ReportController::class, 'salesByCashier']);
-    Route::get('/reports/tax-collected', [ReportController::class, 'taxCollected']);
-    Route::get('/reports/reconciliation', [ReportController::class, 'reconciliation']);
-    Route::get('/reports/inventory-valuation', [ReportController::class, 'inventoryValuation']);
-    Route::get('/reports/sales-by-customer', [ReportController::class, 'salesByCustomer']);
-    Route::get('/reports/b2b-invoices', [ReportController::class, 'b2bInvoices']);
+    Route::middleware('can:' . PosPermissions::REPORTS_VIEW)->group(function () {
+        Route::get('/dashboard/summary', [DashboardController::class, 'summary']);
+
+        Route::get('/reports/day-close', [ReportController::class, 'dayClose']);
+        Route::get('/reports/sales-summary', [ReportController::class, 'salesSummary']);
+        Route::get('/reports/sales-trend', [ReportController::class, 'salesTrend']);
+        Route::get('/reports/sales-by-item', [ReportController::class, 'salesByItem']);
+        Route::get('/reports/sales-by-category', [ReportController::class, 'salesByCategory']);
+        Route::get('/reports/sales-by-cashier', [ReportController::class, 'salesByCashier']);
+        Route::get('/reports/sales-by-customer', [ReportController::class, 'salesByCustomer']);
+        Route::get('/reports/b2b-statement', [ReportController::class, 'b2bStatement']);
+        Route::get('/reports/customer-balances', [ReportController::class, 'customerBalances']);
+        Route::get('/reports/tax-collected', [ReportController::class, 'taxCollected']);
+        Route::get('/reports/profit', [ReportController::class, 'profit']);
+        Route::get('/reports/inventory-valuation', [ReportController::class, 'inventoryValuation']);
+        Route::get('/reports/low-stock', [ReportController::class, 'lowStock']);
+        Route::get('/reports/payment-methods', [ReportController::class, 'paymentMethods']);
+        Route::get('/reports/reconciliation', [ReportController::class, 'reconciliation']);
+        Route::get('/reports/b2b-invoices', [ReportController::class, 'b2bInvoices']);
+    });
 
     Route::get('/compliance/sync-health', [ComplianceController::class, 'syncHealth']);
     Route::get('/compliance/failed', [ComplianceController::class, 'failed']);
@@ -89,6 +102,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/terminals/{terminal}', [TerminalController::class, 'show']);
     Route::put('/terminals/{terminal}', [TerminalController::class, 'update']);
 
+    Route::get('/terminals/{terminal}/usin-counters', [UsinCounterController::class, 'index']);
+    Route::put('/terminals/{terminal}/usin-counters/{usinType}', [UsinCounterController::class, 'update']);
+
     Route::get('/users', [UserController::class, 'index']);
     Route::post('/users', [UserController::class, 'store']);
     Route::put('/users/{user}', [UserController::class, 'update']);
@@ -96,8 +112,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/customers', [CustomerController::class, 'index']);
     Route::post('/customers', [CustomerController::class, 'store']);
     Route::get('/customers/{customer}', [CustomerController::class, 'show']);
+    Route::get('/customers/{customer}/sales', [CustomerController::class, 'sales']);
     Route::put('/customers/{customer}', [CustomerController::class, 'update']);
-
-    Route::get('/customers-atl/status', [AtlImportController::class, 'status']);
-    Route::post('/customers-atl/import', [AtlImportController::class, 'import']);
 });

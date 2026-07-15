@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Buyer, CartLine, Customer, Tender } from '../types';
+import type { Buyer, CartLine, Customer, Tender, UsinType } from '../types';
 
 interface CartState {
   lines: CartLine[];
@@ -7,17 +7,16 @@ interface CartState {
   tenders: Tender[];
   buyer: Buyer;
   customer: Customer | null;
-  confirmNonAtlB2b: boolean;
-  waiveFurtherTax: boolean;
+  usinType: UsinType;
   addLine: (line: CartLine) => void;
   updateLineQuantity: (index: number, quantity: number) => void;
+  updateLinePrice: (index: number, unitPriceExclTax: string) => void;
   removeLine: (index: number) => void;
   setBillDiscount: (value: string) => void;
   setTenders: (tenders: Tender[]) => void;
   setBuyer: (buyer: Buyer) => void;
   setCustomer: (customer: Customer | null) => void;
-  setConfirmNonAtlB2b: (value: boolean) => void;
-  setWaiveFurtherTax: (value: boolean) => void;
+  setUsinType: (usinType: UsinType) => void;
   reset: () => void;
 }
 
@@ -27,8 +26,7 @@ const initialState = {
   tenders: [] as Tender[],
   buyer: {} as Buyer,
   customer: null as Customer | null,
-  confirmNonAtlB2b: false,
-  waiveFurtherTax: false,
+  usinType: 'SIR' as UsinType,
 };
 
 export const useCartStore = create<CartState>((set) => ({
@@ -61,15 +59,21 @@ export const useCartStore = create<CartState>((set) => ({
       return { lines };
     }),
 
+  updateLinePrice: (index, unitPriceExclTax) =>
+    set((state) => {
+      const lines = [...state.lines];
+      lines[index] = { ...lines[index], unit_price_excl_tax: unitPriceExclTax };
+      return { lines };
+    }),
+
   removeLine: (index) =>
     set((state) => ({ lines: state.lines.filter((_, i) => i !== index) })),
 
   setBillDiscount: (value) => set({ billDiscount: value }),
   setTenders: (tenders) => set({ tenders }),
   setBuyer: (buyer) => set({ buyer }),
-  setCustomer: (customer) => set({ customer, confirmNonAtlB2b: false, waiveFurtherTax: false }),
-  setConfirmNonAtlB2b: (value) => set({ confirmNonAtlB2b: value }),
-  setWaiveFurtherTax: (value) => set({ waiveFurtherTax: value }),
+  setCustomer: (customer) => set({ customer }),
+  setUsinType: (usinType) => set({ usinType }),
 
   reset: () => set(initialState),
 }));

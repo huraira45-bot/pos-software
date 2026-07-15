@@ -51,6 +51,7 @@ class RunFlowCommand extends Command
         $sale = $checkout->checkout([
             'branch_id' => $branch->id,
             'terminal_id' => $terminal->id,
+            'usin_type' => 'SIR',
             'items' => [
                 ['product_id' => $tshirt->id, 'quantity' => 2],
                 ['product_id' => $kurti->id, 'quantity' => 1],

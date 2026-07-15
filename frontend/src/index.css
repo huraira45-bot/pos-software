@@ -1,12 +1,54 @@
 @import "tailwindcss";
 
+@theme {
+  /* Primary purple ramp, anchored at Odoo's own brand plum (#714B67 = 600). */
+  --color-primary-50: #faf7f9;
+  --color-primary-100: #f3ecf1;
+  --color-primary-200: #e3d1de;
+  --color-primary-300: #ccabc2;
+  --color-primary-400: #a97e9c;
+  --color-primary-500: #8a5f7d;
+  --color-primary-600: #714b67;
+  --color-primary-700: #5c3d54;
+  --color-primary-800: #482f42;
+  --color-primary-900: #34222f;
+
+  /* Neutral surfaces - light ERP canvas, not pure white/black. */
+  --color-canvas: #f6f7f9;
+  --color-surface: #ffffff;
+  --color-surface-hover: #f9f9fb;
+  --color-border: #e3e5e9;
+  --color-border-strong: #cdd0d6;
+  --color-ink: #1f2430;
+  --color-ink-muted: #6b7280;
+  --color-ink-faint: #9aa0ab;
+
+  /* Semantic status colors - distinct from the primary accent. */
+  --color-success: #1a7f4e;
+  --color-success-bg: #eafaf1;
+  --color-warning: #b5790a;
+  --color-warning-bg: #fdf3e0;
+  --color-danger: #c22a3e;
+  --color-danger-bg: #fbeaec;
+  --color-info: #2563a8;
+  --color-info-bg: #e9f2fb;
+
+  --radius-card: 0.625rem;
+  --shadow-card: 0 1px 2px 0 rgb(15 15 20 / 0.04), 0 1px 6px -2px rgb(15 15 20 / 0.06);
+}
+
 html, body, #root {
   height: 100%;
 }
 
 body {
   margin: 0;
-  background-color: #0f172a;
-  color: #f1f5f9;
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
   font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  scrollbar-width: thin;
 }

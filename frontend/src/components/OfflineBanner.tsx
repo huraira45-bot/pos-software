@@ -57,8 +57,8 @@ export default function OfflineBanner() {
 
   return (
     <div
-      className={`w-full px-4 py-2 text-center text-sm font-medium ${
-        online ? 'bg-amber-600 text-white' : 'bg-red-700 text-white'
+      className={`mb-4 rounded-card px-4 py-2 text-center text-sm font-medium text-white ${
+        online ? 'bg-warning' : 'bg-danger'
       }`}
     >
       {!online && 'Offline - sales are being saved on this device and will sync automatically once connectivity returns. '}

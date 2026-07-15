@@ -25,7 +25,7 @@ class ReturnController extends Controller
     public function lookup(Request $request)
     {
         $request->validate([
-            'usin' => ['required_without:fbr_invoice_number', 'integer'],
+            'usin' => ['required_without:fbr_invoice_number', 'string'],
             'terminal_id' => ['required_with:usin', 'integer', 'exists:terminals,id'],
             'fbr_invoice_number' => ['required_without:usin', 'string'],
         ]);
@@ -35,7 +35,7 @@ class ReturnController extends Controller
         if ($request->filled('fbr_invoice_number')) {
             $query->where('fbr_invoice_number', $request->string('fbr_invoice_number'));
         } else {
-            $query->where('usin', $request->integer('usin'))
+            $query->where('usin', $request->string('usin'))
                 ->where('terminal_id', $request->integer('terminal_id'));
         }
 

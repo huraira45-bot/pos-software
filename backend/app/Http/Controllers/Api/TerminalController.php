@@ -69,7 +69,7 @@ class TerminalController extends Controller
                 $terminal ? 'sometimes' : 'required', 'integer',
                 Rule::unique('terminals', 'fbr_pos_id')->ignore($terminal?->id),
             ],
-            'fiscal_mode' => ['nullable', Rule::in(['fbr_cloud', 'fbr_sandbox', 'local_sdc', 'mock'])],
+            'fiscal_mode' => ['nullable', Rule::in(['fbr_cloud', 'fbr_sandbox', 'pra_cloud', 'pra_sandbox', 'local_sdc', 'mock'])],
             'fiscal_endpoint_override' => ['nullable', 'string', 'max:255'],
             'fiscal_token' => ['nullable', 'string'],
             'is_active' => ['sometimes', 'boolean'],

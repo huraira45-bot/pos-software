@@ -3,21 +3,26 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ReportFilterRequest;
+use App\Http\Resources\ReportResource;
 use App\Services\Reporting\ReportingService;
-use App\Support\PosPermissions;
-use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
+/**
+ * Every action here is gated by the `can:pos.reports-view` route middleware
+ * (see routes/api.php) rather than an in-controller check, so authorization
+ * can never be forgotten on a new endpoint added to this controller.
+ */
 class ReportController extends Controller
 {
     public function __construct(private readonly ReportingService $reports)
     {
     }
 
+    /** Kept as its own raw endpoint (not the report envelope) - a single-day, single-terminal shift-close screen. */
     public function dayClose(Request $request)
     {
-        $this->authorizeReports($request);
-
         $data = $request->validate([
             'branch_id' => ['required', 'integer', 'exists:branches,id'],
             'terminal_id' => ['required', 'integer', 'exists:terminals,id'],
@@ -27,66 +32,88 @@ class ReportController extends Controller
         return response()->json($this->reports->dayClose($data['branch_id'], $data['terminal_id'], $data['date']));
     }
 
-    public function salesByItem(Request $request)
+    public function salesSummary(ReportFilterRequest $request)
     {
-        $this->authorizeReports($request);
-
-        return response()->json($this->reports->salesByItem($request->only(['branch_id', 'from', 'to'])));
+        return ReportResource::make($this->reports->salesSummary($request->validated()));
     }
 
-    public function salesByCategory(Request $request)
+    public function salesTrend(ReportFilterRequest $request)
     {
-        $this->authorizeReports($request);
+        $filters = $request->validated();
 
-        return response()->json($this->reports->salesByCategory($request->only(['branch_id', 'from', 'to'])));
+        return ReportResource::make($this->reports->salesTrend($filters, $filters['granularity'] ?? 'day'));
     }
 
-    public function salesByCashier(Request $request)
+    public function salesByItem(ReportFilterRequest $request)
     {
-        $this->authorizeReports($request);
-
-        return response()->json($this->reports->salesByCashier($request->only(['branch_id', 'from', 'to'])));
+        return ReportResource::make($this->reports->salesByItem($request->validated()));
     }
 
-    public function taxCollected(Request $request)
+    public function salesByCategory(ReportFilterRequest $request)
     {
-        $this->authorizeReports($request);
-
-        return response()->json($this->reports->taxCollected($request->only(['branch_id', 'from', 'to'])));
+        return ReportResource::make($this->reports->salesByCategory($request->validated()));
     }
 
-    public function reconciliation(Request $request)
+    public function salesByCashier(ReportFilterRequest $request)
     {
-        $this->authorizeReports($request);
-
-        return response()->json($this->reports->reconciliation($request->only(['branch_id', 'from', 'to'])));
+        return ReportResource::make($this->reports->salesByCashier($request->validated()));
     }
 
-    public function inventoryValuation(Request $request)
+    public function salesByCustomer(ReportFilterRequest $request)
     {
-        $this->authorizeReports($request);
-
-        return response()->json($this->reports->inventoryValuation($request->integer('branch_id') ?: null));
+        return ReportResource::make($this->reports->salesByCustomer($request->validated()));
     }
 
-    public function salesByCustomer(Request $request)
+    public function b2bStatement(ReportFilterRequest $request)
     {
-        $this->authorizeReports($request);
+        $filters = $request->validated();
 
-        return response()->json($this->reports->salesByCustomer($request->only(['branch_id', 'from', 'to'])));
-    }
-
-    public function b2bInvoices(Request $request)
-    {
-        $this->authorizeReports($request);
-
-        return response()->json($this->reports->b2bInvoices($request->only(['branch_id', 'from', 'to'])));
-    }
-
-    private function authorizeReports(Request $request): void
-    {
-        if (! $request->user()->can(PosPermissions::REPORTS_VIEW)) {
-            throw new AuthorizationException();
+        if (empty($filters['customer_id'])) {
+            throw ValidationException::withMessages(['customer_id' => 'customer_id is required for the B2B statement.']);
         }
+
+        return ReportResource::make($this->reports->b2bCustomerStatement((int) $filters['customer_id'], $filters));
+    }
+
+    public function customerBalances(ReportFilterRequest $request)
+    {
+        return ReportResource::make($this->reports->customerBalances($request->validated()));
+    }
+
+    public function taxCollected(ReportFilterRequest $request)
+    {
+        return ReportResource::make($this->reports->taxCollected($request->validated()));
+    }
+
+    public function profit(ReportFilterRequest $request)
+    {
+        return ReportResource::make($this->reports->profitByItem($request->validated()));
+    }
+
+    public function inventoryValuation(ReportFilterRequest $request)
+    {
+        return ReportResource::make($this->reports->inventoryValuation($request->validated()));
+    }
+
+    public function lowStock(ReportFilterRequest $request)
+    {
+        return ReportResource::make($this->reports->lowStock($request->validated()));
+    }
+
+    public function paymentMethods(ReportFilterRequest $request)
+    {
+        return ReportResource::make($this->reports->salesByPaymentMethod($request->validated()));
+    }
+
+    /** Kept as a raw list (not the report envelope) - feeds the compliance gap-list use case, not the ReportsPage registry. */
+    public function reconciliation(ReportFilterRequest $request)
+    {
+        return response()->json($this->reports->reconciliation($request->validated()));
+    }
+
+    /** Kept as a raw list (not the report envelope) - a flat NTN-invoice list distinct from the B2B statement report. */
+    public function b2bInvoices(ReportFilterRequest $request)
+    {
+        return response()->json($this->reports->b2bInvoices($request->validated()));
     }
 }

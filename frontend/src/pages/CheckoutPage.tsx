@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { useAuthStore } from '../stores/authStore';
+import { apiClient } from '../api/client';
 import { useCartStore } from '../stores/cartStore';
 import { useTerminalStore } from '../stores/terminalStore';
 import { useConfigStore } from '../stores/configStore';
@@ -12,13 +11,28 @@ import OfflineBanner from '../components/OfflineBanner';
 import CustomerAttach from '../components/CustomerAttach';
 import { calculateCart } from '../lib/taxCalc';
 import { submitSale } from '../lib/saleSubmission';
-import type { Product, SaleRequest } from '../types';
+import { printReceipt } from '../lib/printAgent';
+import { Button, Card, Input, PageHeader, Select } from '../components/ui';
+import type { Invoice, Product, SaleRequest, UsinType } from '../types';
 
-const FURTHER_TAX_OVERRIDE_PERMISSION = 'pos.further-tax-override';
+/** How long to keep polling for a fiscalization result before giving up and
+ *  letting the cashier print with a "still pending" banner instead. FBR being
+ *  slow/unreachable must never leave the till stuck forever. */
+const FISCAL_POLL_INTERVAL_MS = 1500;
+const FISCAL_POLL_TIMEOUT_MS = 45000;
+
+type Status =
+  | { kind: 'idle' }
+  | { kind: 'waiting'; invoice: Invoice }
+  | { kind: 'ready'; invoice: Invoice; timedOut: boolean }
+  | { kind: 'queued'; message: string }
+  | { kind: 'error'; message: string };
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 export default function CheckoutPage() {
-  const session = useAuthStore((s) => s.session);
-  const logout = useAuthStore((s) => s.logout);
   const { terminalId, branchId } = useTerminalStore();
   const config = useConfigStore((s) => s.config);
   const loadConfig = useConfigStore((s) => s.load);
@@ -28,21 +42,15 @@ export default function CheckoutPage() {
   const buyer = useCartStore((s) => s.buyer);
   const setBuyer = useCartStore((s) => s.setBuyer);
   const customer = useCartStore((s) => s.customer);
-  const confirmNonAtlB2b = useCartStore((s) => s.confirmNonAtlB2b);
-  const setConfirmNonAtlB2b = useCartStore((s) => s.setConfirmNonAtlB2b);
-  const waiveFurtherTax = useCartStore((s) => s.waiveFurtherTax);
-  const setWaiveFurtherTax = useCartStore((s) => s.setWaiveFurtherTax);
   const addLine = useCartStore((s) => s.addLine);
+  const usinType = useCartStore((s) => s.usinType);
+  const setUsinType = useCartStore((s) => s.setUsinType);
   const reset = useCartStore((s) => s.reset);
 
-  const [status, setStatus] = useState<
-    | { kind: 'idle' }
-    | { kind: 'success'; message: string }
-    | { kind: 'queued'; message: string }
-    | { kind: 'error'; message: string }
-  >({ kind: 'idle' });
-  const [nonAtlPrompt, setNonAtlPrompt] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const [status, setStatus] = useState<Status>({ kind: 'idle' });
+  const [printState, setPrintState] = useState<{ kind: 'idle' } | { kind: 'printing' } | { kind: 'done' } | { kind: 'failed'; error: string }>({
+    kind: 'idle',
+  });
 
   useEffect(() => {
     loadConfig();
@@ -52,20 +60,7 @@ export default function CheckoutPage() {
     return <TerminalPicker />;
   }
 
-  const baseTotals = calculateCart(lines);
-  const isNonAtlB2b = customer?.customer_type === 'b2b' && customer.atl_status !== 'active';
-  const canOverrideFurtherTax = session?.user.permissions?.includes(FURTHER_TAX_OVERRIDE_PERMISSION) ?? false;
-
-  // Preview the same Further Tax the server will apply, so the tender amount
-  // the cashier collects (and TenderPanel's auto-fill) already accounts for it
-  // - otherwise confirming the non-ATL prompt would leave the sale under-tendered.
-  const furtherTaxRate = config?.further_tax_rate_percent ?? 0;
-  const estimatedFurtherTax =
-    isNonAtlB2b && !waiveFurtherTax ? Math.round(baseTotals.totalSaleValue * (furtherTaxRate / 100) * 100) / 100 : 0;
-  const totals = {
-    ...baseTotals,
-    totalBillAmount: Math.round((baseTotals.totalBillAmount + estimatedFurtherTax) * 100) / 100,
-  };
+  const totals = calculateCart(lines);
 
   const buyerCaptureThreshold = config?.buyer_capture_threshold ?? 100000;
   const requiresBuyer = totals.totalBillAmount > buyerCaptureThreshold;
@@ -74,6 +69,7 @@ export default function CheckoutPage() {
     : Boolean(buyer.name && (buyer.ntn || buyer.cnic));
   const tenderedSum = tenders.reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
   const canFinalize =
+    status.kind === 'idle' &&
     lines.length > 0 &&
     Math.abs(tenderedSum - totals.totalBillAmount) < 0.01 &&
     (!requiresBuyer || buyerSatisfied);
@@ -89,13 +85,36 @@ export default function CheckoutPage() {
     });
   }
 
-  async function submit(confirmNonAtlOverride?: boolean) {
-    setSubmitting(true);
+  /** Polls the invoice until FBR has actually responded (synced or permanently
+   *  failed), rather than offering "print" the instant checkout returns - the
+   *  request only creates the invoice locally; fiscalization runs a moment
+   *  later in the background queue worker. */
+  async function waitForFiscalization(invoice: Invoice) {
+    const deadline = Date.now() + FISCAL_POLL_TIMEOUT_MS;
+
+    let current = invoice;
+    while (current.fiscal_status === 'pending' && Date.now() < deadline) {
+      await sleep(FISCAL_POLL_INTERVAL_MS);
+      try {
+        const { data } = await apiClient.get<Invoice>(`/sales/${invoice.id}`);
+        current = data;
+        setStatus({ kind: 'waiting', invoice: current });
+      } catch {
+        // Transient poll failure - keep trying until the deadline.
+      }
+    }
+
+    setStatus({ kind: 'ready', invoice: current, timedOut: current.fiscal_status === 'pending' });
+  }
+
+  async function submit() {
     setStatus({ kind: 'idle' });
+    setPrintState({ kind: 'idle' });
 
     const request: SaleRequest = {
       branch_id: branchId!,
       terminal_id: terminalId!,
+      usin_type: usinType,
       items: lines.map((l) => ({
         product_id: l.product_id,
         variant_id: l.variant_id,
@@ -106,191 +125,161 @@ export default function CheckoutPage() {
       tenders,
       buyer: !customer && requiresBuyer ? buyer : undefined,
       customer_id: customer?.id,
-      // confirmNonAtlOverride is used (rather than reading confirmNonAtlB2b from
-      // the store) because handleConfirmNonAtl calls setConfirmNonAtlB2b(true)
-      // then submit() in the same tick - the store update hasn't re-rendered
-      // yet, so this closure would otherwise still see the stale `false`.
-      confirm_non_atl_b2b: (confirmNonAtlOverride ?? confirmNonAtlB2b) || undefined,
-      waive_further_tax: waiveFurtherTax || undefined,
     };
 
     try {
       const result = await submitSale(request, totals.totalBillAmount.toFixed(2));
       if (result.mode === 'synced') {
-        setStatus({
-          kind: 'success',
-          message: `Sale complete - USIN ${result.invoice.usin}, FBR #${result.invoice.fbr_invoice_number ?? 'pending'}`,
-        });
+        setStatus({ kind: 'waiting', invoice: result.invoice });
+        await waitForFiscalization(result.invoice);
       } else {
         setStatus({
           kind: 'queued',
           message: `Offline - sale saved locally and will sync automatically (ref ${result.localId.slice(0, 8)}).`,
         });
+        reset();
       }
-      reset();
-      setNonAtlPrompt(null);
-    } catch (err: unknown) {
-      const response = (err as { response?: { status?: number; data?: { message?: string; error_code?: string } } })
-        .response;
-      if (response?.status === 409 && response.data?.error_code === 'non_atl_confirmation_required') {
-        setNonAtlPrompt(response.data.message ?? 'This customer is not ATL-active. Confirm to proceed.');
-      } else {
-        setStatus({ kind: 'error', message: 'Could not complete the sale. Please check the cart and try again.' });
-      }
-    } finally {
-      setSubmitting(false);
+    } catch {
+      setStatus({ kind: 'error', message: 'Could not complete the sale. Please check the cart and try again.' });
     }
   }
 
-  async function handleFinalize() {
-    if (!canFinalize) return;
-    await submit();
+  async function handlePrint(invoiceId: number) {
+    setPrintState({ kind: 'printing' });
+    try {
+      const { data: receipt } = await apiClient.get(`/sales/${invoiceId}/receipt`);
+      const result = await printReceipt(receipt);
+      setPrintState(result.ok ? { kind: 'done' } : { kind: 'failed', error: result.error });
+    } catch {
+      setPrintState({ kind: 'failed', error: 'Could not load the receipt to print.' });
+    }
   }
 
-  async function handleConfirmNonAtl() {
-    setConfirmNonAtlB2b(true);
-    setNonAtlPrompt(null);
-    await submit(true);
+  function startNewSale() {
+    reset();
+    setStatus({ kind: 'idle' });
+    setPrintState({ kind: 'idle' });
+  }
+
+  /** Alternative to the ESC/POS thermal-printer path above - opens the same
+   *  receipt as a browser-rendered PDF (no till printer hardware needed), which
+   *  the browser's own print dialog can then send to a real printer or save. */
+  async function handleViewPdf(invoiceId: number) {
+    const response = await apiClient.get(`/sales/${invoiceId}/receipt.pdf`, { responseType: 'blob' });
+    const blobUrl = URL.createObjectURL(response.data as Blob);
+    window.open(blobUrl, '_blank');
   }
 
   return (
-    <div className="flex min-h-full flex-col">
+    <div>
       <OfflineBanner />
+      <PageHeader title="POS Checkout" subtitle="Scan or search an item to begin a sale." />
 
-      <header className="flex items-center justify-between border-b border-slate-800 px-6 py-3">
-        <div>
-          <h1 className="text-lg font-semibold text-white">POS Checkout</h1>
-          <p className="text-xs text-slate-400">
-            {session?.user.name} · Terminal #{terminalId}
-          </p>
-        </div>
-        <div className="flex items-center gap-4">
-          <Link to="/products" className="text-sm text-sky-400 hover:text-sky-300">
-            Products
-          </Link>
-          {session?.user.permissions?.includes('pos.customer-manage') && (
-            <Link to="/atl-import" className="text-sm text-sky-400 hover:text-sky-300">
-              ATL Import
-            </Link>
-          )}
-          <button onClick={logout} className="text-sm text-slate-400 hover:text-white">
-            Sign out
-          </button>
-        </div>
-      </header>
-
-      <main className="grid flex-1 grid-cols-1 gap-6 p-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         <section className="lg:col-span-2">
           <div className="mb-4">
             <ProductSearch onSelect={handleSelectProduct} />
           </div>
-          <div className="rounded-lg bg-slate-800 p-4">
+          <Card className="p-4">
             <CartTable />
-          </div>
+          </Card>
         </section>
 
-        <aside className="space-y-4 rounded-lg bg-slate-800 p-4">
-          <div className="space-y-1 text-sm text-slate-300">
+        <aside className="space-y-4">
+          <Card className="space-y-1.5 p-4 text-sm text-ink-muted">
             <div className="flex justify-between">
               <span>Sale value</span>
-              <span>Rs.{totals.totalSaleValue.toFixed(2)}</span>
+              <span className="tabular-nums text-ink">Rs.{totals.totalSaleValue.toFixed(2)}</span>
             </div>
             <div className="flex justify-between">
               <span>Tax charged</span>
-              <span>Rs.{totals.totalTaxCharged.toFixed(2)}</span>
+              <span className="tabular-nums text-ink">Rs.{totals.totalTaxCharged.toFixed(2)}</span>
             </div>
-            {estimatedFurtherTax > 0 && (
-              <div className="flex justify-between text-amber-400">
-                <span>Further Tax (non-ATL, est.)</span>
-                <span>Rs.{estimatedFurtherTax.toFixed(2)}</span>
-              </div>
-            )}
-            <div className="flex justify-between border-t border-slate-700 pt-1 text-base font-semibold text-white">
+            <div className="flex justify-between border-t border-border pt-1.5 text-base font-semibold text-ink">
               <span>Total</span>
-              <span>Rs.{totals.totalBillAmount.toFixed(2)}</span>
+              <span className="tabular-nums">Rs.{totals.totalBillAmount.toFixed(2)}</span>
             </div>
-          </div>
+          </Card>
 
-          <div className="border-t border-slate-700 pt-3">
+          <Card className="p-4">
+            <Select
+              label="Invoice Type"
+              hint="Which USIN sequence this sale is numbered under."
+              value={usinType}
+              onChange={(e) => setUsinType(e.target.value as UsinType)}
+              disabled={status.kind !== 'idle'}
+            >
+              <option value="SIR">SIR (e.g. SIR-1056)</option>
+              <option value="SS">SS (e.g. SS_1034)</option>
+            </Select>
+          </Card>
+
+          <Card className="p-4">
             <CustomerAttach />
-          </div>
+          </Card>
 
           {requiresBuyer && !customer && (
-            <div className="space-y-2 border-t border-slate-700 pt-3">
-              <p className="text-xs text-amber-400">Buyer details required for invoices over Rs.{buyerCaptureThreshold.toLocaleString()}.</p>
-              <input
-                placeholder="Buyer name"
-                value={buyer.name ?? ''}
-                onChange={(e) => setBuyer({ ...buyer, name: e.target.value })}
-                className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-sm text-white"
-              />
-              <input
-                placeholder="Buyer NTN or CNIC"
-                value={buyer.ntn ?? ''}
-                onChange={(e) => setBuyer({ ...buyer, ntn: e.target.value })}
-                className="w-full rounded border border-slate-700 bg-slate-900 px-2 py-1 text-sm text-white"
-              />
-            </div>
+            <Card className="space-y-2 p-4">
+              <p className="text-xs text-warning">Buyer details required for invoices over Rs.{buyerCaptureThreshold.toLocaleString()}.</p>
+              <Input placeholder="Buyer name" value={buyer.name ?? ''} onChange={(e) => setBuyer({ ...buyer, name: e.target.value })} />
+              <Input placeholder="Buyer NTN or CNIC" value={buyer.ntn ?? ''} onChange={(e) => setBuyer({ ...buyer, ntn: e.target.value })} />
+            </Card>
           )}
 
-          {isNonAtlB2b && canOverrideFurtherTax && (
-            <label className="flex items-center gap-2 border-t border-slate-700 pt-3 text-xs text-slate-300">
-              <input
-                type="checkbox"
-                checked={waiveFurtherTax}
-                onChange={(e) => setWaiveFurtherTax(e.target.checked)}
-              />
-              Waive Further Tax for this non-ATL customer
-            </label>
-          )}
-
-          {nonAtlPrompt && (
-            <div className="space-y-2 rounded-md border border-amber-700 bg-amber-950/50 p-3">
-              <p className="text-xs text-amber-300">{nonAtlPrompt}</p>
-              <div className="flex gap-2">
-                <button
-                  onClick={handleConfirmNonAtl}
-                  className="flex-1 rounded bg-amber-600 py-1.5 text-xs font-medium text-white hover:bg-amber-500"
-                >
-                  Confirm & proceed
-                </button>
-                <button
-                  onClick={() => setNonAtlPrompt(null)}
-                  className="rounded border border-slate-600 px-2 text-xs text-slate-300 hover:bg-slate-700"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
-
-          <div className="border-t border-slate-700 pt-3">
+          <Card className="p-4">
             <TenderPanel billTotal={totals.totalBillAmount} />
-          </div>
+          </Card>
 
-          <button
-            onClick={handleFinalize}
-            disabled={!canFinalize || submitting}
-            className="w-full rounded-md bg-emerald-600 py-2.5 font-medium text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            {submitting ? 'Finalizing…' : 'Finalize Sale'}
-          </button>
-
-          {status.kind !== 'idle' && (
-            <p
-              className={`text-sm ${
-                status.kind === 'success'
-                  ? 'text-emerald-400'
-                  : status.kind === 'queued'
-                    ? 'text-amber-400'
-                    : 'text-red-400'
-              }`}
-            >
-              {status.message}
-            </p>
+          {status.kind === 'idle' && (
+            <Button variant="primary" size="md" onClick={submit} disabled={!canFinalize} className="w-full py-2.5">
+              Finalize Sale
+            </Button>
           )}
+
+          {status.kind === 'waiting' && (
+            <div className="space-y-2 rounded-card border border-transparent bg-info-bg p-3 text-sm shadow-card">
+              <p className="flex items-center gap-2 text-info">
+                <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-info" />
+                Waiting for FBR - USIN {status.invoice.usin}…
+              </p>
+              <p className="text-xs text-ink-muted">The sale is saved; finalizing once FBR confirms the invoice.</p>
+            </div>
+          )}
+
+          {status.kind === 'ready' && (
+            <div className="space-y-3 rounded-card border border-transparent bg-success-bg p-3 text-sm shadow-card">
+              <div>
+                <p className="font-medium text-success">Sale complete - USIN {status.invoice.usin}</p>
+                <p className="text-xs text-ink-muted">
+                  {status.timedOut
+                    ? 'FBR sync is taking longer than usual - it will finish in the background. Printing now shows a "SYNC PENDING" banner.'
+                    : status.invoice.fiscal_status === 'synced'
+                      ? `FBR Invoice No: ${status.invoice.fbr_invoice_number}`
+                      : 'FBR rejected this submission permanently - check the compliance dashboard.'}
+                </p>
+              </div>
+
+              <div className="flex gap-2">
+                <Button variant="primary" size="sm" onClick={() => handlePrint(status.invoice.id)} loading={printState.kind === 'printing'} className="flex-1">
+                  Print Receipt
+                </Button>
+                <Button variant="secondary" size="sm" onClick={() => handleViewPdf(status.invoice.id)} className="flex-1">
+                  View/Print PDF
+                </Button>
+                <Button variant="secondary" size="sm" onClick={startNewSale}>
+                  New Sale
+                </Button>
+              </div>
+
+              {printState.kind === 'done' && <p className="text-xs text-success">Printed.</p>}
+              {printState.kind === 'failed' && <p className="text-xs text-danger">{printState.error}</p>}
+            </div>
+          )}
+
+          {status.kind === 'queued' && <p className="text-sm text-warning">{status.message}</p>}
+          {status.kind === 'error' && <p className="text-sm text-danger">{status.message}</p>}
         </aside>
-      </main>
+      </div>
     </div>
   );
 }

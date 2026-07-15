@@ -20,7 +20,6 @@ final class PosPermissions
     public const USER_MANAGE = 'pos.user-manage';
     public const PRODUCT_MANAGE = 'pos.product-manage';
     public const PURCHASE_MANAGE = 'pos.purchase-manage';
-    public const FURTHER_TAX_OVERRIDE = 'pos.further-tax-override';
     public const CUSTOMER_MANAGE = 'pos.customer-manage';
 
     public static function all(): array
@@ -37,7 +36,6 @@ final class PosPermissions
             self::USER_MANAGE,
             self::PRODUCT_MANAGE,
             self::PURCHASE_MANAGE,
-            self::FURTHER_TAX_OVERRIDE,
             self::CUSTOMER_MANAGE,
         ];
     }

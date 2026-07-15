@@ -4,7 +4,6 @@ namespace App\Services\Sales;
 
 use App\Exceptions\Sales\BuyerInfoRequiredException;
 use App\Exceptions\Sales\InvalidCartException;
-use App\Exceptions\Sales\NonAtlConfirmationRequiredException;
 use App\Exceptions\Sales\PaymentMismatchException;
 use App\Jobs\FiscalizeInvoiceJob;
 use App\Models\AuditLog;
@@ -44,8 +43,6 @@ class CheckoutService
      *   tenders: list<array{mode:int, amount:string}>,
      *   buyer?: array{ntn?:string, cnic?:string, name?:string, phone?:string},
      *   customer_id?: int,
-     *   confirm_non_atl_b2b?: bool,
-     *   waive_further_tax?: bool,
      * } $cart
      */
     public function checkout(array $cart, User $actor): Invoice
@@ -55,7 +52,6 @@ class CheckoutService
         }
 
         $customer = $this->resolveCustomer($cart);
-        $furtherTaxRate = $this->assertAtlConfirmationAndResolveFurtherTaxRate($cart, $customer, $actor);
 
         $productIds = collect($cart['items'])->pluck('product_id')->unique();
         $products = Product::with('variants')->whereIn('id', $productIds)->get()->keyBy('id');
@@ -97,14 +93,7 @@ class CheckoutService
                 }
             }
 
-            // Further Tax (non-ATL B2B): computed on the taxable value (sale
-            // value less line discount), same base as regular sales tax, and
-            // added on top of anything the request already specified.
             $furtherTax = (string) ($cartItem['further_tax'] ?? '0');
-            if ($furtherTaxRate !== null) {
-                $taxableValue = bcsub($rawSaleValue, $lineDiscount, 2);
-                $furtherTax = bcadd($furtherTax, bcdiv(bcmul($taxableValue, (string) $furtherTaxRate, 4), '100', 2), 2);
-            }
 
             $lines[] = [
                 'item_code' => $variant->sku ?? $product->item_code,
@@ -153,20 +142,18 @@ class CheckoutService
         }
         $paymentMode = count($tenders) > 1 ? Invoice::PAYMENT_MIXED : (int) $tenders[0]['mode'];
 
-        $nonAtlConfirmed = (bool) ($cart['confirm_non_atl_b2b'] ?? false);
-        $furtherTaxWaived = $furtherTaxRate === null && $customer?->isB2b() && ! $customer->isAtlActive();
-
         [$invoice, $outboxId] = DB::transaction(function () use (
             $cart, $computed, $header, $lines, $lineMeta, $tenders, $paymentMode, $actor,
-            $customer, $buyer, $nonAtlConfirmed, $furtherTaxWaived,
+            $customer, $buyer,
         ) {
-            $usin = $this->usinGenerator->next($cart['terminal_id']);
+            $usin = $this->usinGenerator->next($cart['terminal_id'], $cart['usin_type']);
 
             $invoice = Invoice::create([
                 'branch_id' => $cart['branch_id'],
                 'terminal_id' => $cart['terminal_id'],
                 'customer_id' => $customer?->id,
                 'usin' => $usin,
+                'usin_type' => $cart['usin_type'],
                 'invoice_type' => Invoice::TYPE_NEW,
                 'ref_invoice_id' => null,
                 'buyer_ntn' => $buyer['ntn'] ?? null,
@@ -178,8 +165,6 @@ class CheckoutService
                 'discount' => $header['discount'],
                 'further_tax' => $header['further_tax'],
                 'total_bill_amount' => $header['total_bill_amount'],
-                'non_atl_confirmed' => $nonAtlConfirmed,
-                'further_tax_waived' => $furtherTaxWaived,
                 'payment_mode' => $paymentMode,
                 'payment_breakdown' => count($tenders) > 1 ? $tenders : null,
                 'fiscal_status' => Invoice::FISCAL_PENDING,
@@ -244,28 +229,6 @@ class CheckoutService
         }
 
         return Customer::findOrFail($cart['customer_id']);
-    }
-
-    /**
-     * @return float|null the further-tax rate to apply, or null if it doesn't apply this sale
-     */
-    private function assertAtlConfirmationAndResolveFurtherTaxRate(array $cart, ?Customer $customer, User $actor): ?float
-    {
-        if (! $customer || ! $customer->isB2b() || $customer->isAtlActive()) {
-            return null;
-        }
-
-        if (empty($cart['confirm_non_atl_b2b'])) {
-            throw new NonAtlConfirmationRequiredException($customer->name);
-        }
-
-        $waive = (bool) ($cart['waive_further_tax'] ?? false);
-        if ($waive) {
-            $this->authorize($actor, PosPermissions::FURTHER_TAX_OVERRIDE, 'Waiving Further Tax for a non-ATL B2B customer requires additional permission.');
-            return null;
-        }
-
-        return config('pos.further_tax_rate_percent');
     }
 
     private function assertBuyerCaptured(string $totalBillAmount, array $buyer): void

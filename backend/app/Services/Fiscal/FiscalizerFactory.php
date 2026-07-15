@@ -38,6 +38,18 @@ class FiscalizerFactory
                 $terminal->effectiveFiscalToken(),
                 'fbr_sandbox',
             ),
+            'pra_cloud' => new FbrPostDataFiscalizer(
+                $this->payloadBuilder,
+                $terminal->fiscal_endpoint_override ?: config('fiscal.endpoints.pra_cloud'),
+                $terminal->effectiveFiscalToken(),
+                'pra_cloud',
+            ),
+            'pra_sandbox' => new FbrPostDataFiscalizer(
+                $this->payloadBuilder,
+                $terminal->fiscal_endpoint_override ?: config('fiscal.endpoints.pra_sandbox'),
+                $terminal->effectiveFiscalToken(),
+                'pra_sandbox',
+            ),
             'local_sdc' => new LocalSdcFiscalizer(
                 $this->payloadBuilder,
                 $terminal->fiscal_endpoint_override ?: config('fiscal.endpoints.local_sdc'),

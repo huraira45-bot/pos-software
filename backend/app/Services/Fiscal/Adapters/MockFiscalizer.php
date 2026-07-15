@@ -24,11 +24,16 @@ class MockFiscalizer implements FiscalizerContract
     {
         $payload = $this->payloadBuilder->build($invoice);
 
+        // usin is now a prefixed string (e.g. "SIR-1056", "SS_1034"), not a bare
+        // integer - pull out just the trailing number for the fabricated suffix.
+        preg_match('/(\d+)$/', (string) $invoice->usin, $matches);
+        $usinNumber = isset($matches[1]) ? (int) $matches[1] : 0;
+
         $fbrInvoiceNumber = sprintf(
             '%06d-%s-%04d',
             $invoice->terminal->fbr_pos_id,
             now()->format('dmyHis'),
-            $invoice->usin % 10000,
+            $usinNumber % 10000,
         );
 
         $response = [

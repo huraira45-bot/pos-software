@@ -99,17 +99,15 @@ Retry timing is **not** governed by Laravel's queue backoff — `FiscalizeInvoic
 
 A product catalog mirror also lives in IndexedDB (`products` store, indexed by barcode and item code) so barcode scanning/search keep working through a connectivity drop.
 
-### Customers, ATL status, and Further Tax
+### Customers
 
-`Customer` records carry `customer_type` (`walk_in`/`b2b`), NTN (7 digits)/CNIC (13 digits, both digit-normalized via mutators), and `atl_status` (FBR Active Taxpayer List membership: `active`/`inactive`/`unknown`). `AtlImportService` bulk-updates `atl_status` from an FBR-downloaded CSV (forgiving column-name matching) — it only ever updates existing customers, never creates new ones from ATL data.
-
-`CheckoutService::assertAtlConfirmationAndResolveFurtherTaxRate()` is the enforcement point: attaching a B2B customer whose `atl_status !== 'active'` requires an explicit `confirm_non_atl_b2b` flag from the client (server throws `NonAtlConfirmationRequiredException`, surfaced as HTTP 409, otherwise), and then applies `pos.further_tax_rate_percent` on top of ordinary sales tax unless the cashier has `PosPermissions::FURTHER_TAX_OVERRIDE` and explicitly waives it. The further-tax rate in `config/pos.php` is explicitly flagged as illustrative, not a verified current statutory rate.
+`Customer` records carry `customer_type` (`walk_in`/`b2b`) and NTN (7 digits)/CNIC (13 digits, both digit-normalized via mutators). `further_tax` remains a real column on `invoices`/`invoice_items` and a real key (`FurtherTax`) in the FBR PostData payload — it's part of the FBR invoice contract — but nothing in this app currently computes a non-zero value for it; it's always `0` unless populated explicitly (e.g. replaying a past sale's line items).
 
 Buyer identity (name + NTN/CNIC) becomes mandatory once `total_bill_amount` exceeds `Invoice::BUYER_CAPTURE_THRESHOLD` (100,000) — enforced in `CheckoutService::assertBuyerCaptured()`.
 
 ### Permissions
 
-A single source of truth, `App\Support\PosPermissions`, lists every gated action as a constant (spatie/laravel-permission under the hood). Three roles: `cashier` (no special permissions — anti-fraud default), `manager` (most permissions), `admin` (all, via `PosPermissions::all()`). Service classes check permissions inline (`$actor->can(...)`, throwing `AuthorizationException`) rather than via route middleware, since the gating is often conditional on computed values (discount %, further-tax waiver) rather than the route itself.
+A single source of truth, `App\Support\PosPermissions`, lists every gated action as a constant (spatie/laravel-permission under the hood). Three roles: `cashier` (no special permissions — anti-fraud default), `manager` (most permissions), `admin` (all, via `PosPermissions::all()`). Service classes check permissions inline (`$actor->can(...)`, throwing `AuthorizationException`) rather than via route middleware, since the gating is often conditional on computed values (e.g. discount %) rather than the route itself.
 
 ### Money/decimal handling
 

@@ -31,7 +31,9 @@ export interface Product {
   pct_code: string;
   tax_rate: string;
   price_excl_tax: string;
+  cost_price: string | null;
   track_stock: boolean;
+  reorder_level: string;
   is_active: boolean;
   variants: ProductVariant[];
 }
@@ -64,21 +66,45 @@ export interface Buyer {
 export interface Customer {
   id: number;
   name: string;
+  company_name: string | null;
+  contact_person: string | null;
   phone: string | null;
+  email: string | null;
   ntn: string | null;
   ntn_formatted: string | null;
   cnic: string | null;
   cnic_formatted: string | null;
+  strn: string | null;
   address: string | null;
+  billing_address: string | null;
+  shipping_address: string | null;
   customer_type: 'walk_in' | 'b2b';
-  atl_status: 'active' | 'inactive' | 'unknown';
-  atl_checked_at: string | null;
+  payment_terms_days: number | null;
+  credit_limit: string | null;
+  opening_balance: string | null;
+  price_level: 'retail' | 'wholesale' | 'custom' | null;
   is_active: boolean;
+  sales_summary?: CustomerSalesSummary;
+  recent_sales?: Invoice[];
 }
+
+export interface CustomerSalesSummary {
+  sales_count: number;
+  total_sales_amount: string;
+  total_tax_charged: string;
+  last_sale_at: string | null;
+  opening_balance: string;
+  account_balance: string;
+  available_credit: string;
+}
+
+/** SIR (hyphen-separated, e.g. SIR-1056) and SS (underscore-separated, e.g. SS_1034) are independent gapless USIN sequences per terminal. */
+export type UsinType = 'SIR' | 'SS';
 
 export interface SaleRequest {
   branch_id: number;
   terminal_id: number;
+  usin_type: UsinType;
   items: Array<{
     product_id: number;
     variant_id?: number;
@@ -91,36 +117,50 @@ export interface SaleRequest {
   tenders: Tender[];
   buyer?: Buyer;
   customer_id?: number;
-  confirm_non_atl_b2b?: boolean;
-  waive_further_tax?: boolean;
 }
 
 export interface InvoiceItem {
   id: number;
+  product_id: number | null;
+  product_variant_id: number | null;
   item_code: string;
   item_name: string;
+  pct_code: string;
   quantity: string;
   unit_price_excl_tax: string;
   tax_rate: string;
   sale_value: string;
   tax_charged: string;
   discount: string;
+  further_tax: string;
   total_amount: string;
+  invoice_type: number;
 }
 
 export interface Invoice {
   id: number;
   usin: string;
+  usin_type: UsinType | null;
   invoice_type: number;
+  ref_invoice_id: number | null;
+  ref_usin: string | null;
   fbr_invoice_number: string | null;
   fiscal_status: 'pending' | 'synced' | 'failed_permanent';
   printed_offline_pending: boolean;
+  branch_id: number;
+  terminal_id: number;
+  customer_id: number | null;
+  buyer: Buyer;
   total_sale_value: string;
   total_tax_charged: string;
   discount: string;
+  further_tax: string;
   total_bill_amount: string;
   payment_mode: number;
+  payment_breakdown: Tender[] | null;
   sold_at: string;
+  synced_at: string | null;
+  cashier_id: number;
   items: InvoiceItem[];
 }
 

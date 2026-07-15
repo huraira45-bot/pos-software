@@ -36,22 +36,20 @@ export default function TenderPanel({ billTotal }: Props) {
   return (
     <div>
       <div className="mb-2 flex items-center justify-between">
-        <h3 className="text-sm font-medium text-slate-300">Payment</h3>
-        <button type="button" onClick={addTender} className="text-xs text-sky-400 hover:text-sky-300">
+        <h3 className="text-sm font-medium text-ink">Payment</h3>
+        <button type="button" onClick={addTender} className="text-xs font-medium text-primary-600 hover:text-primary-700">
           + Add tender
         </button>
       </div>
 
-      {tenders.length === 0 && (
-        <p className="text-xs text-slate-500">No tender added yet.</p>
-      )}
+      {tenders.length === 0 && <p className="text-xs text-ink-faint">No tender added yet.</p>}
 
       {tenders.map((tender, index) => (
         <div key={index} className="mb-2 flex gap-2">
           <select
             value={tender.mode}
             onChange={(e) => updateTender(index, 'mode', e.target.value)}
-            className="rounded border border-slate-700 bg-slate-900 px-2 py-1 text-sm text-white"
+            className="rounded border border-border-strong bg-surface px-2 py-1 text-sm text-ink outline-none focus:border-primary-500"
           >
             {PAYMENT_MODES.map((m) => (
               <option key={m.value} value={m.value}>
@@ -64,16 +62,16 @@ export default function TenderPanel({ billTotal }: Props) {
             step="0.01"
             value={tender.amount}
             onChange={(e) => updateTender(index, 'amount', e.target.value)}
-            className="flex-1 rounded border border-slate-700 bg-slate-900 px-2 py-1 text-right text-sm text-white"
+            className="flex-1 rounded border border-border-strong bg-surface px-2 py-1 text-right text-sm text-ink outline-none focus:border-primary-500"
           />
-          <button type="button" onClick={() => removeTender(index)} className="text-red-400">
+          <button type="button" onClick={() => removeTender(index)} className="text-danger hover:opacity-75">
             ✕
           </button>
         </div>
       ))}
 
       {billTotal > 0 && (
-        <p className={`mt-2 text-sm ${remaining === 0 ? 'text-emerald-400' : 'text-amber-400'}`}>
+        <p className={`mt-2 text-sm font-medium ${remaining === 0 ? 'text-success' : 'text-warning'}`}>
           {remaining === 0 ? 'Fully tendered' : `Remaining: Rs.${remaining.toFixed(2)}`}
         </p>
       )}

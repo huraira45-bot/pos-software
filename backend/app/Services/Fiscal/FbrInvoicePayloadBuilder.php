@@ -8,10 +8,10 @@ use App\Services\Fiscal\Support\Money;
 use Brick\Math\BigDecimal;
 
 /**
- * Builds the FBR POS "PostData" JSON body from an Invoice + its items, per the
- * Tier-1 IMS integration data model. Shared by every cloud/local adapter since
- * they all speak the same request contract - only the endpoint and transport
- * differ per adapter.
+ * Builds the FBR/PRA POS "PostData" JSON body from an Invoice + its items, per
+ * the Tier-1 IMS integration data model. Shared by every cloud/local adapter
+ * since they all speak the same request contract - only the endpoint,
+ * transport, and buyer-NTN field key differ per adapter/authority.
  */
 class FbrInvoicePayloadBuilder
 {
@@ -26,11 +26,12 @@ class FbrInvoicePayloadBuilder
             'POSID' => $invoice->terminal->fbr_pos_id,
             'USIN' => (string) $invoice->usin,
             'DateTime' => $invoice->sold_at->toIso8601String(),
-            'BuyerNTN' => $invoice->buyer_ntn ?? '',
+            $this->buyerNtnFieldName($invoice) => $invoice->buyer_ntn ?? '',
             'BuyerCNIC' => $invoice->buyer_cnic ?? '',
             'BuyerName' => $invoice->buyer_name ?? '',
             'BuyerPhoneNumber' => $invoice->buyer_phone ?? '',
             'TotalSaleValue' => Money::toApiDouble($invoice->total_sale_value),
+            'TotalQuantity' => (int) round((float) $invoice->items->sum('quantity')),
             'TotalTaxCharged' => Money::toApiDouble($invoice->total_tax_charged),
             'Discount' => Money::toApiDouble($invoice->discount),
             'FurtherTax' => Money::toApiDouble($invoice->further_tax),
@@ -52,6 +53,23 @@ class FbrInvoicePayloadBuilder
                 'InvoiceType' => $item->invoice_type,
             ])->all(),
         ];
+    }
+
+    /**
+     * FBR and PRA share the same PRAL-built PostData contract and transport,
+     * but disagree on this one field's name - confirmed against real FBR data
+     * (invoices sent as "BuyerNTN" show the buyer's NTN in FBR's own report;
+     * older invoices sent as "BuyerPNTN" never did, even after waiting days -
+     * ruling out reporting lag), while PRA's official POS Component manual
+     * documents "BuyerPNTN" explicitly. Everything except pra_cloud/pra_sandbox
+     * is treated as FBR, including local_sdc, since that's the terminal this
+     * was verified against.
+     */
+    private function buyerNtnFieldName(Invoice $invoice): string
+    {
+        return in_array($invoice->terminal->effectiveFiscalMode(), ['pra_cloud', 'pra_sandbox'], true)
+            ? 'BuyerPNTN'
+            : 'BuyerNTN';
     }
 
     /**
