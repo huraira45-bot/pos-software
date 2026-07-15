@@ -25,8 +25,10 @@ use Illuminate\Support\Facades\DB;
  * not a selling price) per the business owner - price_excl_tax defaults to
  * the same value and is expected to be overridden per-sale at checkout
  * (PosPermissions::PRICE_OVERRIDE) until real sale prices are set.
- * tax_rate (18%) and pct_code (placeholder 9999.9999) aren't in the source
- * data at all and need real values filled in later via the Products page.
+ * tax_rate (18%) isn't in the source data at all and may need per-product
+ * correction later via the Products page. pct_code defaults to 8708.2990
+ * (PCT chapter 87.08 "parts and accessories of motor vehicles - other"),
+ * the catch-all code the business confirmed applies to this catalog.
  */
 class ImportPartsCommand extends Command
 {
@@ -34,7 +36,7 @@ class ImportPartsCommand extends Command
         {json : Path to the exported parts JSON file}
         {--branch=MULTAN : Branch code to seed initial stock_levels for}
         {--tax-rate=18.00 : Flat tax rate applied to every imported part}
-        {--pct-code=9999.9999 : Placeholder PCT code applied to every imported part}
+        {--pct-code=8708.2990 : PCT code applied to every imported part}
         {--dry-run : Report what would happen without writing anything}';
 
     protected $description = 'Replace the product catalog with parts from an exported partinven.xlsx JSON file';

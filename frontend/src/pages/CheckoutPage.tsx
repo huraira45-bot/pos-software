@@ -119,6 +119,7 @@ export default function CheckoutPage() {
         product_id: l.product_id,
         variant_id: l.variant_id,
         quantity: l.quantity,
+        unit_price_excl_tax: l.unit_price_excl_tax,
         line_discount: l.line_discount,
         further_tax: l.further_tax,
       })),
