@@ -96,11 +96,18 @@ export default function SalesHistoryPage() {
   }, []);
 
   async function handleViewPdf(invoiceId: number) {
+    // Open the tab synchronously, in direct response to the click - opening it
+    // after the await below is what browsers' popup blockers silently swallow.
+    const pdfWindow = window.open('', '_blank');
     setPdfLoadingId(invoiceId);
     try {
       const response = await apiClient.get(`/sales/${invoiceId}/receipt.pdf`, { responseType: 'blob' });
       const blobUrl = URL.createObjectURL(response.data as Blob);
-      window.open(blobUrl, '_blank');
+      if (pdfWindow) {
+        pdfWindow.location.href = blobUrl;
+      } else {
+        window.open(blobUrl, '_blank');
+      }
     } finally {
       setPdfLoadingId(null);
     }

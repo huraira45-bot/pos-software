@@ -166,9 +166,16 @@ export default function CheckoutPage() {
    *  receipt as a browser-rendered PDF (no till printer hardware needed), which
    *  the browser's own print dialog can then send to a real printer or save. */
   async function handleViewPdf(invoiceId: number) {
+    // Open the tab synchronously, in direct response to the click - opening it
+    // after the await below is what browsers' popup blockers silently swallow.
+    const pdfWindow = window.open('', '_blank');
     const response = await apiClient.get(`/sales/${invoiceId}/receipt.pdf`, { responseType: 'blob' });
     const blobUrl = URL.createObjectURL(response.data as Blob);
-    window.open(blobUrl, '_blank');
+    if (pdfWindow) {
+      pdfWindow.location.href = blobUrl;
+    } else {
+      window.open(blobUrl, '_blank');
+    }
   }
 
   return (
